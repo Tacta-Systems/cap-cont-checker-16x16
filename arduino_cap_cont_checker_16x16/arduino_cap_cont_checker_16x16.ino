@@ -44,15 +44,18 @@ the reason we're using these names is because we're limited to one character + c
 - 'O' for continuity check mode
 - 'P' for capacitance check mode
 - 'S' for reset sweep mode
+- 'Z' for all off
 - 'R' for writing to the row muxes
 - 'L' for writing to the column muxes
 - 'T' for writing to the reset muxes
 */
+bool hasPrinted = false;
 
 void loop() {
   char cmd;
-  if (Serial.available() > 0) {
+  if (Serial.available() > 0) { // > 0
     cmd = Serial.read();
+    hasPrinted = false;
   }
   if (cmd == 'O') { // continuity check mode
     state = 'O';
@@ -64,6 +67,10 @@ void loop() {
     displayBinaryRow(0);
     displayBinaryCol(0);
     displayBinaryRst(0);
+    if (!hasPrinted) {
+      Serial.println("CONT CHECK MODE");
+      hasPrinted = true;
+    }
   }
   else if (cmd == 'P') { // capacitance checker mode
     state = 'P';
@@ -75,6 +82,10 @@ void loop() {
     displayBinaryRow(0);
     displayBinaryCol(0);
     displayBinaryRst(0);
+    if (!hasPrinted) {
+      Serial.println("CAP CHECK MODE");
+      hasPrinted = true;
+    }
   }
   else if (cmd == 'S') { // reset sweep mode
     state = 'S';
@@ -86,20 +97,51 @@ void loop() {
     displayBinaryRow(0);
     displayBinaryCol(0);
     displayBinaryRst(0);
+    if (!hasPrinted) {
+      Serial.println("RST SWEEP MODE");
+      hasPrinted = true;
+    }
   }
-  else if (cmd == 'R') {
+  else if (cmd == 'Z') { // off mode
+    state = 'Z';
+    digitalWrite(N_ROW_MODE_SEL, LOW);
+    digitalWrite(N_ROW_DEC_EN, LOW);
+    digitalWrite(ROW_MUX_EN, LOW);
+    digitalWrite(COL_MUX_EN, LOW);
+    digitalWrite(RST_MUX_EN, LOW);
+    displayBinaryRow(0);
+    displayBinaryCol(0);
+    displayBinaryRst(0);
+    if (!hasPrinted) {
+      Serial.println("OFF MODE");
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == 'R') { // write to row mode
     state = 'R';
     displayBinaryRow(0);
+    if (!hasPrinted) {
+      Serial.println("ROW WRITE MODE");
+      hasPrinted = true;
+    }
   }
-  else if (cmd == 'L') {
+  else if (cmd == 'L') { // write to column mode
     state = 'L';
     displayBinaryCol(0);
+    if (!hasPrinted) {
+      Serial.println("COL WRITE MODE");
+      hasPrinted = true;
+    }
   }
-  else if (cmd == 'T') {
+  else if (cmd == 'T') { // write to reset mode
     state = 'T';
     displayBinaryRst(0);
+    if (!hasPrinted) {
+      Serial.println("RST WRITE MODE");
+      hasPrinted = true;
+    }
   }
-  else if (isHexadecimalDigit(cmd)) {
+  else if (isHexadecimalDigit(cmd)) { // characters 0-F drive indices 0-15 of whichever column's selected
     char cmds[1];
     cmds[0] = cmd;
     int channel = (int) strtol(cmds, 0, 16);
@@ -110,6 +152,10 @@ void loop() {
       if (channel > 0) {
         displayBinaryRow(channel);
       }
+      if (!hasPrinted) {
+        Serial.println("R " + String(channel));
+        hasPrinted = true;
+      }
     }
     else if (state == 'L') {
       if ((channel == 0) && cmd == '0') {
@@ -118,6 +164,10 @@ void loop() {
       if (channel > 0) {
         displayBinaryCol(channel);
       }
+      if (!hasPrinted) {
+        Serial.println("C " + String(channel));
+        hasPrinted = true;
+      }
     }
     else if (state == 'T') {
       if ((channel == 0) && cmd == '0') {
@@ -125,6 +175,10 @@ void loop() {
       }
       if (channel > 0) {
         displayBinaryRst(channel);
+      }
+      if (!hasPrinted) {
+        Serial.println("RST " + String(channel));
+        hasPrinted = true;
       }
     }
     else {
