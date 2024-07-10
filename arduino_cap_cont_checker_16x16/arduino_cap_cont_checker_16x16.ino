@@ -68,7 +68,7 @@ void loop() {
     displayBinaryCol(0);
     displayBinaryRst(0);
     if (!hasPrinted) {
-      Serial.println("CONT CHECK MODE");
+      Serial.println("O");
       hasPrinted = true;
     }
   }
@@ -83,7 +83,7 @@ void loop() {
     displayBinaryCol(0);
     displayBinaryRst(0);
     if (!hasPrinted) {
-      Serial.println("CAP CHECK MODE");
+      Serial.println("P");
       hasPrinted = true;
     }
   }
@@ -98,7 +98,7 @@ void loop() {
     displayBinaryCol(0);
     displayBinaryRst(0);
     if (!hasPrinted) {
-      Serial.println("RST SWEEP MODE");
+      Serial.println("S");
       hasPrinted = true;
     }
   }
@@ -113,7 +113,7 @@ void loop() {
     displayBinaryCol(0);
     displayBinaryRst(0);
     if (!hasPrinted) {
-      Serial.println("OFF MODE");
+      Serial.println("Z");
       hasPrinted = true;
     }
   }
@@ -121,7 +121,7 @@ void loop() {
     state = 'R';
     displayBinaryRow(0);
     if (!hasPrinted) {
-      Serial.println("ROW WRITE MODE");
+      Serial.println("R");
       hasPrinted = true;
     }
   }
@@ -129,7 +129,7 @@ void loop() {
     state = 'L';
     displayBinaryCol(0);
     if (!hasPrinted) {
-      Serial.println("COL WRITE MODE");
+      Serial.println("L");
       hasPrinted = true;
     }
   }
@@ -137,7 +137,7 @@ void loop() {
     state = 'T';
     displayBinaryRst(0);
     if (!hasPrinted) {
-      Serial.println("RST WRITE MODE");
+      Serial.println("T");
       hasPrinted = true;
     }
   }

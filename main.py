@@ -46,7 +46,7 @@ ser.timeout = 1                    #non-block read
 ser.xonxoff = False                #disable software flow control
 ser.rtscts = False                 #disable hardware (RTS/CTS) flow control
 ser.dsrdtr = False                 #disable hardware (DSR/DTR) flow control
-ser.writeTimeout = 2               #timeout for write
+ser.write_timeout = None               #timeout for write -- changed from writeTimeout
 
 delay_time = 0.1
 
@@ -113,7 +113,29 @@ while True:
         continue
     else:
         break
-delay_time = 0.1
+print("Running " + state + " test\n")
+
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    """
+    Call in a loop to create terminal progress bar
+    Source: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
 
 '''
 Arduino states are below:
@@ -122,32 +144,34 @@ the reason we're using these names is because we're limited to one character + c
 - 'O' for continuity check mode
 - 'P' for capacitance check mode
 - 'S' for reset sweep mode
+- 'Z' for all off
 - 'R' for writing to the row muxes
 - 'L' for writing to the column muxes
 - 'T' for writing to the reset muxes
 '''
 
-full_path = path + 'meas_output_' + suffix + "_" + state.lower() + '.csv'
+name = path + 'meas_output_' + suffix + "_" + state.lower()
+full_path = name + '.csv'
+
 with open(full_path, 'w', newline = '') as file:
     if (state == "CAP"):
         writer = csv.writer(file)
         writer.writerow([suffix + " -- " + state, dt.datetime.now()])
-        writer.writerow(["S/N", "Row Index", "Column Index", "Cap Off Measurement", "Cap On Measurement", "Calibrated Measurement"])                     
+        writer.writerow(["S/N", "Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])                     
         inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
         time.sleep(delay_time)
-        for row in range(0, 4): # CHANGE BACK TO 16, set to 4 for troubleshooting
-            ser.write(b'R')                                  # set mode to row write mode
-            time.sleep(delay_time)
-            ser.write(bytes(hex(row)[2:], 'utf-8'))          # write row index
-            time.sleep(delay_time)
-            ser.write(b'L')                                  # set mode to column write mode
-            time.sleep(delay_time)
-            for col in range(0, 4):  # CHANGE BACK TO 16, set to 4 for troubleshooting
-                ser.write(b'Z')                              # set all mux enables to OFF to get dark reading
+        printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
+        for row in range(0, 16):
+            for col in range(0, 16):
+                ser.write(b'Z')                              # set all mux enables + mux channels to OFF to get dark reading
                 time.sleep(delay_time)
                 off_meas = float(inst.query('read?')[:-1])   # read mux off measurement
                 time.sleep(1)   # TODO: see how small we can make this delay
                 ser.write(b'P')                              # set mode to capacitance check mode
+                time.sleep(delay_time)
+                ser.write(b'R')                              # set mode to row write mocomde
+                time.sleep(delay_time)
+                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
                 time.sleep(delay_time)
                 ser.write(b'L')                              # set mode to column write mode
                 time.sleep(delay_time)
@@ -155,34 +179,42 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(delay_time)
                 on_meas = float(inst.query('read?')[:-1])    # read mux on measurement
                 time.sleep(1)   # TODO: see how small we can make this delay
-                writer.writerow([suffix, str(row), str(col), off_meas, on_meas, on_meas - off_meas])
+                writer.writerow([suffix, str(row+1), str(col+1), off_meas, on_meas, on_meas - off_meas]) # appends to CSV with 1 index
                 time.sleep(delay_time)
-    elif (state == "CONT"): # this works as of 2024-07-02
+            printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
+    elif (state == "CONT"): # 16x16 works as of 2024-07-08
+        writer = csv.writer(file)
+        writer.writerow([suffix + " -- " + state, dt.datetime.now()])
+        writer.writerow(["S/N", "Row Index", "Column Index", "Resistance (ohm)"])                     
+        printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         inst.query('meas:res?')                              # set Keithley mode to resistance measurement
         ser.write(b'O')                                      # set mode to continuity check
         time.sleep(delay_time)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
-        out_array[1] = ["R" + str(i) for i in range(-1, 16)] # set rows of output array to be "R0"..."R15"
+        out_array[1] = ["R" + str(i) for i in range(0, 17)] # set rows of output array to be "R1"..."R16"
         for i in range(len(out_array)):
-            out_array[i][0] = "C" + str(i-2)                 # set cols of output array to be "C0"..."C15"
+            out_array[i][0] = "C" + str(i-1)                 # set cols of output array to be "C1"..."C16"
         out_array[0][0] = "Continuity Test"
         out_array[0][1] = suffix
         out_array[0][2] = dt.datetime.now()
         out_array[1][0] = "Resistance (ohm)"
-        for row in range(0, 4): # CHANGE BACK TO 16, set to 4 for troubleshooting
+        out = []
+        for row in range(0, 16): # CHANGE BACK TO 16, set to 4 for troubleshooting
             ser.write(b'R')                                  # set mode to row write mode
             time.sleep(delay_time)
             ser.write(bytes(hex(row)[2:], 'utf-8'))          # write row index
             time.sleep(delay_time)
             ser.write(b'L')                                  # set mode to column write mode
             time.sleep(delay_time)
-            for col in range(0, 4): # CHANGE BACK TO 16, set to 4 for troubleshooting
+            for col in range(0, 16): # CHANGE BACK TO 16, set to 4 for troubleshooting
                 ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(delay_time);
+                time.sleep(delay_time)
                 val = inst.query('read?')[:-1]               # read resistance measurement
                 out_array[row+2][col+1] = val
                 time.sleep(1)   # TODO: see how small we can make this delay
-        np.savetxt(full_path, out_array, delimiter=",", fmt="%s")
+                writer.writerow([suffix, str(row+1), str(col+1), val])
+            printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
+        np.savetxt(name + "_alt.csv", out_array, delimiter=",", fmt="%s")
     elif (state == "RESET"): # this only sweeps the reset lines; no measurements taken
         ser.write(b'S')
         time.sleep(delay_time)
@@ -194,4 +226,4 @@ with open(full_path, 'w', newline = '') as file:
 
 print("\nDone! Results saved to: " + full_path)
 time.sleep(delay_time)
-ser.write(b'Z')
+ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
