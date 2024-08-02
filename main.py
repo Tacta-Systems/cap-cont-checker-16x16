@@ -21,6 +21,8 @@ Software requirements
   * serial library
   * csv library
   * datetime library
+
+ONE INDEXED OUTPUT!
 '''
 
 import serial
@@ -161,7 +163,7 @@ with open(full_path, 'w', newline = '') as file:
         inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
         time.sleep(delay_time)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
-        for row in range(0, 16):
+        for row in range(15, -1, -1):
             for col in range(0, 16):
                 ser.write(b'Z')                              # set all mux enables + mux channels to OFF to get dark reading
                 time.sleep(delay_time)
@@ -191,15 +193,15 @@ with open(full_path, 'w', newline = '') as file:
         ser.write(b'O')                                      # set mode to continuity check
         time.sleep(delay_time)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
-        out_array[1] = ["R" + str(i) for i in range(0, 17)] # set rows of output array to be "R1"..."R16"
+        out_array[1] = ["C" + str(i) for i in range(0, 17)] # set cols of output array to be "C1"..."R16"
         for i in range(len(out_array)):
-            out_array[i][0] = "C" + str(i-1)                 # set cols of output array to be "C1"..."C16"
+            out_array[len(out_array)-1-i][0] = "R" + str(i+1)                 # set rows of output array to be "R1"..."R16"
         out_array[0][0] = "Continuity Test"
         out_array[0][1] = suffix
         out_array[0][2] = dt.datetime.now()
         out_array[1][0] = "Resistance (ohm)"
         out = []
-        for row in range(0, 16): # CHANGE BACK TO 16, set to 4 for troubleshooting
+        for row in range(15, -1, -1): # CHANGE BACK TO 16, set to 4 for troubleshooting
             ser.write(b'R')                                  # set mode to row write mode
             time.sleep(delay_time)
             ser.write(bytes(hex(row)[2:], 'utf-8'))          # write row index
@@ -210,10 +212,10 @@ with open(full_path, 'w', newline = '') as file:
                 ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
                 time.sleep(delay_time)
                 val = inst.query('read?')[:-1]               # read resistance measurement
-                out_array[row+2][col+1] = val
+                out_array[(16-row)+1][col+1] = val
                 time.sleep(1)   # TODO: see how small we can make this delay
                 writer.writerow([suffix, str(row+1), str(col+1), val])
-            printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
+            printProgressBar(16-row, 16, suffix = "Row " + str(16-row) + "/16", length = 16)
         np.savetxt(name + "_alt.csv", out_array, delimiter=",", fmt="%s")
     elif (state == "RESET"): # this only sweeps the reset lines; no measurements taken
         ser.write(b'S')
