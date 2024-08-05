@@ -240,7 +240,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(delay_time)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         for row in range(0, 16):
-            ser.write(bytes(hex(i)[2:], 'utf-8'))            # write the row address to the tester
+            ser.write(bytes(hex(row)[2:], 'utf-8'))            # write the row address to the tester
             time.sleep(delay_time)
             val = float(inst.query('read?')[:-1])            # read resistance from the meter
             time.sleep(delay_test_equipment_time)
@@ -261,7 +261,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(delay_time)
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         for col in range(0, 16):
-            ser.write(bytes(hex(i)[2:], 'utf-8'))            # write the column address to the tester
+            ser.write(bytes(hex(col)[2:], 'utf-8'))            # write the column address to the tester
             time.sleep(delay_time)
             val = float(inst.query('read?')[:-1])            # read resistance from the meter
             time.sleep(delay_test_equipment_time)
