@@ -57,7 +57,7 @@ RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
 
 tkinter.Tk().withdraw()
-path = "C:\\Users\\Maxwell\\Desktop\\" # hardcoded this as default value, below lines (commented) can prompt for the path
+path = "G:\\Shared drives\\Engineering\\Projects\\Testing\\16x16_Array_E_Test\\Phase_1EFG_Array\\" # hardcoded this as default value, below lines (commented) can prompt for the path
 # print("Please select the directory to output data to:")
 # path = filedialog.askdirectory()
 
@@ -88,7 +88,8 @@ if (len(list_of_ports)) == 0:
 
 # Query user for the Arduino COM port, will run until valid state given
 # Can comment out this section if running on one computer
-port = ""
+port = "COM3"
+'''
 while True:
     try:
         port = input("Please select the Arduino COM port COM[x]: ").upper()
@@ -100,6 +101,7 @@ while True:
         continue
     else:
         break
+'''
 ser.port = port
 
 try:
@@ -129,7 +131,7 @@ while True:
     else:
         break
 print("Running " + states[index] + " test\n")
-part_name = 'meas_output_' + suffix + "_" + states[index].lower()
+part_name = 'meas_output_' + states[index].lower() + "_" + suffix
 name = part_name + '.csv'
 full_path = path + name
 if (name in os.listdir(path)):
