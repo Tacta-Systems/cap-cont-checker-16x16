@@ -52,7 +52,7 @@ ser.dsrdtr = False                 # disable hardware (DSR/DTR) flow control
 ser.write_timeout = None           # timeout for write -- changed from writeTimeout
 
 DELAY_TIME = 0.1
-DELAY_TEST_EQUIPMENT_TIME = 0.5
+DELAY_TEST_EQUIPMENT_TIME = 0.2
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
 
@@ -113,9 +113,9 @@ except Exception as e:
 
 suffix = input("\nPlease enter the name/variant of this board: ")
 
-# states can be "CAP", "CONT_ROW_TO_COL", "CONT_ROW_TO_PZBIAS", "CONT_COL_TO_PZBIAS", or "RESET"
+# states can be "CAP", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", or "RESET"
 # Query user for the test mode to run, will loop until valid state given
-states = ["CAP", "CONT_ROW_TO_COL", "CONT_ROW_TO_PZBIAS", "CONT_COL_TO_PZBIAS", "RESET_SWEEP"]
+states = ["CAP", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", "RESET_SWEEP"]
 index = -1
 while True:
     try:
@@ -131,7 +131,7 @@ while True:
     else:
         break
 print("Running " + states[index] + " test\n")
-part_name = 'meas_output_' + states[index].lower() + "_" + suffix
+part_name = 'meas_output_' + suffix + "_" + states[index].lower()
 name = part_name + '.csv'
 full_path = path + name
 if (name in os.listdir(path)):
@@ -205,6 +205,7 @@ with open(full_path, 'w', newline = '') as file:
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     elif (states[index] == "CONT_ROW_TO_COL"): # 16x16 works as of 2024-07-08
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
+              "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Connect two SMA to DuPont cables, one to ROW, one to COL" + 
               "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL center/red")
         input("Press 'enter' when ready:\n")
@@ -247,8 +248,9 @@ with open(full_path, 'w', newline = '') as file:
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         np.savetxt(path + part_name + "_alt.csv", out_array, delimiter=",", fmt="%s")
         print("There were " + str(num_shorts) + " row/col short(s) in array " + suffix)
-    elif (states[index] == "CONT_ROW_TO_PZBIAS"):
+    elif (states[index] == "CONT_PZBIAS_TO_ROW"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
+              "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Connect two SMA to DuPont cables, one to ROW, one to COL" + 
               "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL outside/black")
         input("Press 'enter' when ready:\n")
@@ -275,8 +277,9 @@ with open(full_path, 'w', newline = '') as file:
                 num_shorts += 1
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " row/PZBIAS short(s) in array " + suffix)
-    elif (states[index] == "CONT_COL_TO_PZBIAS"):
+    elif (states[index] == "CONT_PZBIAS_TO_COL"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
+              "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Connect one SMA to DuPont cable to COL" + 
               "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black")
         input("Press 'enter' when ready:\n")
