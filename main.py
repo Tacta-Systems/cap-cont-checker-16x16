@@ -227,7 +227,6 @@ with open(full_path, 'w', newline = '') as file:
         out_array[0][1] = suffix
         out_array[0][2] = dt.datetime.now()
         out_array[1][0] = "Resistance (ohm)"
-        out = []
         num_shorts = 0
         for row in range(0, 16):
             ser.write(b'R')                                  # set mode to row write mode
