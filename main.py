@@ -57,7 +57,8 @@ RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
 
 tkinter.Tk().withdraw()
-path = "G:\\Shared drives\\Engineering\\Projects\\Testing\\16x16_Array_E_Test\\Phase_1EFG_Array\\" # hardcoded this as default value, below lines (commented) can prompt for the path
+#path = "G:\\Shared drives\\Engineering\\Projects\\Testing\\16x16_Array_E_Test\\Phase_1EFG_Array\\" # hardcoded this as default value, below lines (commented) can prompt for the path
+path = "C:\\Users\\tacta\\Desktop\\"
 # print("Please select the directory to output data to:")
 # path = filedialog.askdirectory()
 
@@ -89,6 +90,7 @@ if (len(list_of_ports)) == 0:
 # Query user for the Arduino COM port, will run until valid state given
 # Can comment out this section if running on one computer
 port = "COM3"
+
 '''
 while True:
     try:
@@ -101,6 +103,7 @@ while True:
         continue
     else:
         break
+
 '''
 ser.port = port
 
@@ -123,10 +126,10 @@ while True:
             print("- " + str(i) + " for " + states[i])
         index = int(input("Please select a test: "))
     except ValueError:
-        print("Sorry, please select a valid test between 0 and 4")
+        print("Sorry, please select a valid test between 0 and " + str(len(states)-1))
         continue
     if (index > 4 or index < 0):
-        print("Sorry, please select a valid test between 0 and 4")
+        print("Sorry, please select a valid test between and " + str(len(states)-1))
         continue
     else:
         break
@@ -176,12 +179,26 @@ the reason we're using these names is because we're limited to one character + c
 
 with open(full_path, 'w', newline = '') as file:
     if (states[index] == "CAP"):
+        print("Connections:\n- Connect sensor to J2B ZIF conector" +
+              "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
+              "\n- Run row/column, row/PZBIAS, col/PZBIAS continuity tests and ensure all open circuit" +
+              "\n- Connect one SMA to DuPont cable to COL" + 
+              "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black")
+        input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
         writer.writerow(["S/N", "Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
         inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
+        out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
+        out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
+        for i in range(len(out_array)):
+            out_array[len(out_array)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
+        out_array[0][0] = "Capacitance Test Column to PZBIAS"
+        out_array[0][1] = suffix
+        out_array[0][2] = dt.datetime.now()
+        out_array[1][0] = "Calibrated Cap (pF)"
         for row in range(0, 16):
             for col in range(0, 16):
                 ser.write(b'Z')                              # set all mux enables + mux channels to OFF to get dark reading
@@ -200,9 +217,12 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 on_meas = float(inst.query('read?')[:-1])    # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
-                writer.writerow([suffix, str(row+1), str(col+1), off_meas, on_meas, on_meas - off_meas]) # appends to CSV with 1 index
+                cal_meas = on_meas - off_meas
+                out_array[(16-row)+1][col+1] = cal_meas*1e12
+                writer.writerow([suffix, str(row+1), str(col+1), off_meas, on_meas, cal_meas]) # appends to CSV with 1 index
                 time.sleep(DELAY_TIME)
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
+        np.savetxt(path + part_name + "_alt.csv", out_array, delimiter=",", fmt="%s")
     elif (states[index] == "CONT_ROW_TO_COL"): # 16x16 works as of 2024-07-08
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
