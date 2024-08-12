@@ -118,7 +118,7 @@ suffix = input("\nPlease enter the name/variant of this board: ")
 
 # states can be "CAP", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", or "RESET"
 # Query user for the test mode to run, will loop until valid state given
-states = ["CAP", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", "RESET_SWEEP"]
+states = ["CAP", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", "CONT_SHIELD_TO_COL", "RESET_SWEEP"]
 index = -1
 while True:
     try:
@@ -182,6 +182,7 @@ with open(full_path, 'w', newline = '') as file:
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Run row/column, row/PZBIAS, col/PZBIAS continuity tests and ensure all open circuit" +
+              "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect one SMA to DuPont cable to COL" + 
               "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black")
         input("Press 'enter' when ready:\n")
@@ -226,6 +227,7 @@ with open(full_path, 'w', newline = '') as file:
     elif (states[index] == "CONT_ROW_TO_COL"): # 16x16 works as of 2024-07-08
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
+              "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect two SMA to DuPont cables, one to ROW, one to COL" + 
               "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL center/red")
         input("Press 'enter' when ready:\n")
@@ -270,6 +272,7 @@ with open(full_path, 'w', newline = '') as file:
     elif (states[index] == "CONT_PZBIAS_TO_ROW"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
+              "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect two SMA to DuPont cables, one to ROW, one to COL" + 
               "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL outside/black")
         input("Press 'enter' when ready:\n")
@@ -299,6 +302,7 @@ with open(full_path, 'w', newline = '') as file:
     elif (states[index] == "CONT_PZBIAS_TO_COL"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
+              "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect one SMA to DuPont cable to COL" + 
               "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black")
         input("Press 'enter' when ready:\n")
@@ -325,6 +329,37 @@ with open(full_path, 'w', newline = '') as file:
                 num_shorts += 1
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " col/PZBIAS short(s) in array " + suffix)
+    elif (states[index] == "CONT_SHIELD_TO_COL"):
+        print("Connections:\n- Connect sensor to J2B ZIF conector" +
+              "\n- Run CONT_PZBIAS_TO_COL test, and note any columns shorted to PZBIAS if any" +
+              "\n- Switch the PZBIAS <--> SHIELD switch to ON" +
+              "\n- Connect one SMA to DuPont cable to COL" +
+              "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black" +
+              "\n- After the test, switch the PZBIAS <--> SHIELD switch to OFF")
+        input("Press 'enter' when ready:\n")
+        writer = csv.writer(file)
+        writer.writerow([suffix, states[index], dt.datetime.now()])
+        writer.writerow(["S/N", "Col Index", "Col Res. to PZBIAS"])
+        inst.query('meas:res?')                              # set Keithley mode to resistance measurement
+        time.sleep(DELAY_TIME)
+        inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
+                                                             # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf        
+        ser.write(b'O')                                      # set mode to continuity check mode
+        time.sleep(DELAY_TIME)
+        ser.write(b'L')                                      # set mode to column write mode
+        time.sleep(DELAY_TIME)
+        printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
+        num_shorts = 0
+        for col in range(0, 16):
+            ser.write(bytes(hex(col)[2:], 'utf-8'))            # write the column address to the tester
+            time.sleep(DELAY_TIME)
+            val = float(inst.query('read?')[:-1])            # read resistance from the meter
+            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            writer.writerow([suffix, str(col+1), val])       # write value to CSV
+            if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+                num_shorts += 1
+            printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
+        print("There were " + str(num_shorts) + " col/SHIELD short(s) in array " + suffix)
     elif (states[index] == "RESET_SWEEP"): # this only sweeps the reset lines; no measurements taken. This writes an empty CSV.
         ser.write(b'S')
         time.sleep(DELAY_TIME)
