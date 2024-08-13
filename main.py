@@ -40,7 +40,7 @@ from tkinter import filedialog
 VISA_SERIAL_NUMBER = "04611761"
 
 ser = serial.Serial()
-ser.port = "COM3" # hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM3"
 ser.baudrate = 9600
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -58,7 +58,7 @@ RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a
 
 tkinter.Tk().withdraw()
 #path = "G:\\Shared drives\\Engineering\\Projects\\Testing\\16x16_Array_E_Test\\Phase_1EFG_Array\\" # hardcoded this as default value, below lines (commented) can prompt for the path
-path = "C:\\Users\\tacta\\Desktop\\"
+path = "C:\\Users\\Tacta\\Desktop\\"
 # print("Please select the directory to output data to:")
 # path = filedialog.askdirectory()
 
@@ -89,7 +89,7 @@ if (len(list_of_ports)) == 0:
 
 # Query user for the Arduino COM port, will run until valid state given
 # Can comment out this section if running on one computer
-port = "COM3"
+port = "COM3" # hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 
 '''
 while True:
@@ -116,9 +116,9 @@ except Exception as e:
 
 suffix = input("\nPlease enter the name/variant of this board: ")
 
-# states can be "CAP", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", or "RESET"
+# states can be "CAP_SENSOR", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", "CONT_SHIELD_TO_COL", or "RESET"
 # Query user for the test mode to run, will loop until valid state given
-states = ["CAP", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", "CONT_SHIELD_TO_COL", "RESET_SWEEP"]
+states = ["CAP_SENSOR", "CONT_ROW_TO_COL", "CONT_PZBIAS_TO_ROW", "CONT_PZBIAS_TO_COL", "CONT_SHIELD_TO_COL", "RESET_SWEEP"]
 index = -1
 while True:
     try:
@@ -178,7 +178,7 @@ the reason we're using these names is because we're limited to one character + c
 '''
 
 with open(full_path, 'w', newline = '') as file:
-    if (states[index] == "CAP"):
+    if (states[index] == "CAP_SENSOR"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Run row/column, row/PZBIAS, col/PZBIAS continuity tests and ensure all open circuit" +
@@ -191,6 +191,8 @@ with open(full_path, 'w', newline = '') as file:
         writer.writerow(["S/N", "Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
         inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
         time.sleep(DELAY_TIME)
+        inst.write('sens:cap:rang 1E-9')                     # limits cap range to the smallest possible value
+        time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
         out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
@@ -202,13 +204,9 @@ with open(full_path, 'w', newline = '') as file:
         out_array[1][0] = "Calibrated Cap (pF)"
         for row in range(0, 16):
             for col in range(0, 16):
-                ser.write(b'Z')                              # set all mux enables + mux channels to OFF to get dark reading
+                ser.write(b'O')                              # "OFF" measurement" - continuity check mode disconnects the +15/-8V switches
                 time.sleep(DELAY_TIME)
-                off_meas = float(inst.query('read?')[:-1])   # read mux off measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
-                ser.write(b'P')                              # set mode to capacitance check mode
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mocomde
+                ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
                 time.sleep(DELAY_TIME)
@@ -216,11 +214,23 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
                 time.sleep(DELAY_TIME)
-                on_meas = float(inst.query('read?')[:-1])    # read mux on measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
-                cal_meas = on_meas - off_meas
-                out_array[(16-row)+1][col+1] = cal_meas*1e12
-                writer.writerow([suffix, str(row+1), str(col+1), off_meas, on_meas, cal_meas]) # appends to CSV with 1 index
+                tft_off_meas = float(inst.query('read?')[:-1])   # read mux off measurement
+                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
+                time.sleep(DELAY_TIME)
+                ser.write(b'R')                              # set mode to row write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
+                time.sleep(DELAY_TIME)
+                ser.write(b'L')                              # set mode to column write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                time.sleep(DELAY_TIME)
+                tft_on_meas = float(inst.query('read?')[:-1])    # read mux on measurement
+                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                tft_cal_meas = tft_on_meas - tft_off_meas
+                out_array[(16-row)+1][col+1] = tft_cal_meas*1e12
+                writer.writerow([suffix, str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
                 time.sleep(DELAY_TIME)
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         np.savetxt(path + part_name + "_alt.csv", out_array, delimiter=",", fmt="%s")
