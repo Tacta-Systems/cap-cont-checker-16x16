@@ -41,7 +41,7 @@ VISA_SERIAL_NUMBER = "04611761"
 
 ser = serial.Serial()
 ser.port = "COM3"
-ser.baudrate = 9600
+ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
 ser.stopbits = serial.STOPBITS_ONE # number of stop bits
@@ -51,14 +51,14 @@ ser.rtscts = False                 # disable hardware (RTS/CTS) flow control
 ser.dsrdtr = False                 # disable hardware (DSR/DTR) flow control
 ser.write_timeout = None           # timeout for write -- changed from writeTimeout
 
-DELAY_TIME = 0.1
-DELAY_TEST_EQUIPMENT_TIME = 0.2
+DELAY_TIME = 0.05
+DELAY_TEST_EQUIPMENT_TIME = 0.1
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
 
 tkinter.Tk().withdraw()
 #path = "G:\\Shared drives\\Engineering\\Projects\\Testing\\16x16_Array_E_Test\\Phase_1EFG_Array\\" # hardcoded this as default value, below lines (commented) can prompt for the path
-path = "C:\\Users\\Tacta\\Desktop\\"
+path = "C:\\Users\\Maxwell\\Desktop\\" # C:\Users\tacta\Desktop
 # print("Please select the directory to output data to:")
 # path = filedialog.askdirectory()
 
@@ -89,7 +89,7 @@ if (len(list_of_ports)) == 0:
 
 # Query user for the Arduino COM port, will run until valid state given
 # Can comment out this section if running on one computer
-port = "COM3" # hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+port = "COM5" # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 
 '''
 while True:

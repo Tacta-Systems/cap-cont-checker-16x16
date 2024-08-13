@@ -34,7 +34,7 @@ void setup() {
   digitalWrite(ROW_MUX_EN, LOW);
   digitalWrite(COL_MUX_EN, LOW);
   digitalWrite(RST_MUX_EN, LOW);
-  Serial.begin(9600);
+  Serial.begin(115200);
 }
 
 char state = ' ';
@@ -64,9 +64,6 @@ void loop() {
     digitalWrite(ROW_MUX_EN, HIGH);
     digitalWrite(COL_MUX_EN, HIGH);
     digitalWrite(RST_MUX_EN, LOW);
-    displayBinaryRow(0);
-    displayBinaryCol(0);
-    displayBinaryRst(0);
     if (!hasPrinted) {
       Serial.println("O");
       hasPrinted = true;
@@ -79,9 +76,6 @@ void loop() {
     digitalWrite(ROW_MUX_EN, HIGH);
     digitalWrite(COL_MUX_EN, HIGH);
     digitalWrite(RST_MUX_EN, LOW);
-    displayBinaryRow(0);
-    displayBinaryCol(0);
-    displayBinaryRst(0);
     if (!hasPrinted) {
       Serial.println("P");
       hasPrinted = true;
@@ -94,9 +88,6 @@ void loop() {
     digitalWrite(ROW_MUX_EN, LOW);
     digitalWrite(COL_MUX_EN, LOW);
     digitalWrite(RST_MUX_EN, HIGH);
-    displayBinaryRow(0);
-    displayBinaryCol(0);
-    displayBinaryRst(0);
     if (!hasPrinted) {
       Serial.println("S");
       hasPrinted = true;
@@ -109,9 +100,6 @@ void loop() {
     digitalWrite(ROW_MUX_EN, LOW);
     digitalWrite(COL_MUX_EN, LOW);
     digitalWrite(RST_MUX_EN, LOW);
-    displayBinaryRow(0);
-    displayBinaryCol(0);
-    displayBinaryRst(0);
     if (!hasPrinted) {
       Serial.println("Z");
       hasPrinted = true;
@@ -119,7 +107,6 @@ void loop() {
   }
   else if (cmd == 'R') { // write to row mode
     state = 'R';
-    displayBinaryRow(0);
     if (!hasPrinted) {
       Serial.println("R");
       hasPrinted = true;
@@ -127,7 +114,6 @@ void loop() {
   }
   else if (cmd == 'L') { // write to column mode
     state = 'L';
-    displayBinaryCol(0);
     if (!hasPrinted) {
       Serial.println("L");
       hasPrinted = true;
@@ -135,7 +121,6 @@ void loop() {
   }
   else if (cmd == 'T') { // write to reset mode
     state = 'T';
-    displayBinaryRst(0);
     if (!hasPrinted) {
       Serial.println("T");
       hasPrinted = true;
