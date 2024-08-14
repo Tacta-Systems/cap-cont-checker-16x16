@@ -187,7 +187,7 @@ with open(full_path, 'w', newline = '') as file:
               "\n- Run row/column, row/PZBIAS, col/PZBIAS continuity tests and ensure all open circuit" +
               "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect one SMA to DuPont cable to COL" +
-              "\n- Connect red DMM lead to COL center/red, black DMM lead to COL outside/black")
+              "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black")
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
@@ -367,6 +367,7 @@ with open(full_path, 'w', newline = '') as file:
         out_array[0][1] = suffix
         out_array[0][2] = dt.datetime.now()
         out_array[1][0] = "Resistance (ohm)"
+        num_shorts = 0
         for row in range(0, 16):
             ser.write(b'P')                                     # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
             time.sleep(DELAY_TIME)
@@ -381,12 +382,15 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 tft_on_meas = float(inst.query('read?')[:-1])   # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)           # TODO: see how small we can make this delay
+                if (tft_on_meas < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+                    num_shorts += 1
                 out_array[(16-row)+1][col+1] = tft_on_meas
                 writer.writerow([suffix, str(row+1), str(col+1), tft_on_meas]) # appends to CSV with 1 index
                 time.sleep(DELAY_TIME)
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         ser.write(b'I')                                         # mode that sets all +15/-8V switches to -8V
         time.sleep(DELAY_TIME)
+        print("There were " + str(num_shorts) + " row/col short(s) in array " + suffix)
         np.savetxt(path + part_name + "_alt.csv", out_array, delimiter=",", fmt="%s")
     elif (states[index] == "CONT_SHIELD_TO_ROW"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
