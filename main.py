@@ -174,6 +174,7 @@ the reason we're using these names is because we're limited to one character + c
 - 'P' for capacitance check mode
 - 'S' for reset sweep mode
 - 'Z' for all off
+- 'I' for binary counter disable mode
 - 'R' for writing to the row muxes
 - 'L' for writing to the column muxes
 - 'T' for writing to the reset muxes
@@ -245,7 +246,7 @@ with open(full_path, 'w', newline = '') as file:
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
-        writer.writerow(["S/N", "Row Index", "Column Index", "Resistance (ohm)"])                     
+        writer.writerow(["S/N", "Row Index", "Column Index", "Row Res. to Col. (ohm)"])                     
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         inst.query('meas:res?')
         time.sleep(DELAY_TIME)
@@ -290,7 +291,7 @@ with open(full_path, 'w', newline = '') as file:
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
-        writer.writerow(["S/N", "Row Index", "Row Res. to PZBIAS"])
+        writer.writerow(["S/N", "Row Index", "Row Res. to PZBIAS (ohm)"])
         inst.query('meas:res?')                              # set Keithley mode to resistance measurement
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
@@ -320,7 +321,7 @@ with open(full_path, 'w', newline = '') as file:
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
-        writer.writerow(["S/N", "Col Index", "Col Res. to PZBIAS"])
+        writer.writerow(["S/N", "Col Index", "Col Res. to PZBIAS (ohm)"])
         inst.query('meas:res?')                              # set Keithley mode to resistance measurement
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
@@ -351,7 +352,7 @@ with open(full_path, 'w', newline = '') as file:
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
-        writer.writerow(["S/N", "Col Index", "Col Res. to PZBIAS"])
+        writer.writerow(["S/N", "Col Index", "Row Res. to SHIELD (ohm)"])
         inst.query('meas:res?')                              # set Keithley mode to resistance measurement
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
@@ -382,7 +383,7 @@ with open(full_path, 'w', newline = '') as file:
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
-        writer.writerow(["S/N", "Col Index", "Col Res. to PZBIAS"])
+        writer.writerow(["S/N", "Col Index", "Col Res. to SHIELD (ohm)"])
         inst.query('meas:res?')                              # set Keithley mode to resistance measurement
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
