@@ -135,7 +135,8 @@ while True:
     else:
         break
 print("Running " + states[index] + " test\n")
-part_name = 'meas_output_' + suffix + "_" + states[index].lower()
+date_time_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+part_name = date_time_now + '_meas_output_' + suffix + "_" + states[index].lower()
 name = part_name + '.csv'
 full_path = path + name
 if (name in os.listdir(path)):
