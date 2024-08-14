@@ -185,7 +185,7 @@ with open(full_path, 'w', newline = '') as file:
               "\n- Run row/column, row/PZBIAS, col/PZBIAS continuity tests and ensure all open circuit" +
               "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect one SMA to DuPont cable to COL" + 
-              "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black")
+              "\n- Connect red DMM lead to COL center/red, black DMM lead to COL outside/black")
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
@@ -205,7 +205,7 @@ with open(full_path, 'w', newline = '') as file:
         out_array[1][0] = "Calibrated Cap (pF)"
         for row in range(0, 16):
             for col in range(0, 16):
-                ser.write(b'O')                              # "OFF" measurement" - continuity check mode disconnects the +15/-8V switches
+                ser.write(b'I')                              # "OFF" measurement" - continuity check mode disconnects the +15/-8V switches
                 time.sleep(DELAY_TIME)
                 ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)

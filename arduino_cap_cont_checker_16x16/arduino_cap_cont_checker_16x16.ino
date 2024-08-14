@@ -45,6 +45,7 @@ the reason we're using these names is because we're limited to one character + c
 - 'P' for capacitance check mode
 - 'S' for reset sweep mode
 - 'Z' for all off
+- 'I' for binary counter disable mode
 - 'R' for writing to the row muxes
 - 'L' for writing to the column muxes
 - 'T' for writing to the reset muxes
@@ -102,6 +103,18 @@ void loop() {
     digitalWrite(RST_MUX_EN, LOW);
     if (!hasPrinted) {
       Serial.println("Z");
+      hasPrinted = true;
+    }
+  }
+  if (cmd == 'I') { // continuity check mode
+    state = 'I';
+    digitalWrite(N_ROW_MODE_SEL, LOW);
+    digitalWrite(N_ROW_DEC_EN, HIGH);
+    digitalWrite(ROW_MUX_EN, HIGH);
+    digitalWrite(COL_MUX_EN, HIGH);
+    digitalWrite(RST_MUX_EN, LOW);
+    if (!hasPrinted) {
+      Serial.println("I");
       hasPrinted = true;
     }
   }
