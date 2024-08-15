@@ -58,7 +58,7 @@ RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a
 
 tkinter.Tk().withdraw()
 #path = "G:\\Shared drives\\Engineering\\Projects\\Testing\\16x16_Array_E_Test\\Phase_1EFG_Array\\" # hardcoded this as default value, below lines (commented) can prompt for the path
-path = "C:\\Users\\Maxwell\\Desktop\\" # C:\Users\tacta\Desktop
+path = "C:\\Users\\tacta\\Desktop\\" # C:\Users\tacta\Desktop
 # print("Please select the directory to output data to:")
 # path = filedialog.askdirectory()
 
@@ -89,7 +89,7 @@ if (len(list_of_ports)) == 0:
 
 # Query user for the Arduino COM port, will run until valid state given
 # Can comment out this section if running on one computer
-port = "COM5" # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+port = "COM3" # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 
 '''
 while True:
@@ -207,7 +207,7 @@ with open(full_path, 'w', newline = '') as file:
         out_array[1][0] = "Calibrated Cap (pF)"
         for row in range(0, 16):
             for col in range(0, 16):
-                ser.write(b'I')                              # "OFF" measurement" - continuity check mode disconnects the +15/-8V switches
+                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
                 ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)
@@ -216,10 +216,12 @@ with open(full_path, 'w', newline = '') as file:
                 ser.write(b'L')                              # set mode to column write mode
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                time.sleep(DELAY_TIME)
+                ser.write(b'I')                              # "OFF" measurement" - continuity check mode disconnects the +15/-8V switches
                 time.sleep(DELAY_TIME)
                 tft_off_meas = float(inst.query('read?')[:-1])   # read mux off measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
-                ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
+                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
                 ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)
@@ -228,6 +230,8 @@ with open(full_path, 'w', newline = '') as file:
                 ser.write(b'L')                              # set mode to column write mode
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                time.sleep(DELAY_TIME)
+                ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
                 time.sleep(DELAY_TIME)
                 tft_on_meas = float(inst.query('read?')[:-1])    # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
@@ -254,8 +258,6 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf
-        ser.write(b'O')                                      # set mode to continuity check
-        time.sleep(DELAY_TIME)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
         out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
         for i in range(len(out_array)):
@@ -266,14 +268,18 @@ with open(full_path, 'w', newline = '') as file:
         out_array[1][0] = "Resistance (ohm)"
         num_shorts = 0
         for row in range(0, 16):
-            ser.write(b'R')                                  # set mode to row write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(row)[2:], 'utf-8'))          # write row index
-            time.sleep(DELAY_TIME)
-            ser.write(b'L')                                  # set mode to column write mode
-            time.sleep(DELAY_TIME)
             for col in range(0, 16):
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
+                time.sleep(DELAY_TIME)
+                ser.write(b'R')                                  # set mode to row write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(row)[2:], 'utf-8'))          # write row index
+                time.sleep(DELAY_TIME)
+                ser.write(b'L')                                  # set mode to column write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(col)[2:], 'utf-8'))          # write column index
+                time.sleep(DELAY_TIME)
+                ser.write(b'O')                                  # set mode to continuity check
                 time.sleep(DELAY_TIME)
                 val = float(inst.query('read?')[:-1])               # read resistance measurement
                 out_array[(16-row)+1][col+1] = val
