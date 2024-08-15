@@ -9,6 +9,11 @@ Hardware requirements:
 - Arduino MEGA 2560 R3
   * F - F ribbon cable from Arduino P36/37 to GND
   * Male header pins, double length (Amazon B077N29TP5)
+  
+  **************************************************************
+  *** RUNNING THE NO_ACK CODE THAT DOES NOT REPLY VIA SERIAL ***
+  **************************************************************
+
 - Short (6") BNC to SMA cable + BNC to banana plug
 
 - Add more wires here as the test setup gets built
