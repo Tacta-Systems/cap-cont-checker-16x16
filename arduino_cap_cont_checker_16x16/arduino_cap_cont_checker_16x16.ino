@@ -29,12 +29,16 @@ void setup() {
   pinMode(ROW_MUX_EN, OUTPUT);
   pinMode(N_ROW_DEC_EN, OUTPUT);
   pinMode(N_ROW_MODE_SEL, OUTPUT);
-  digitalWrite(N_ROW_MODE_SEL, LOW);
-  digitalWrite(N_ROW_DEC_EN, LOW);
+  offMode();
+  Serial.begin(115200);
+}
+
+void offMode() {
+  digitalWrite(N_ROW_MODE_SEL, HIGH);
+  digitalWrite(N_ROW_DEC_EN, HIGH);
   digitalWrite(ROW_MUX_EN, LOW);
   digitalWrite(COL_MUX_EN, LOW);
   digitalWrite(RST_MUX_EN, LOW);
-  Serial.begin(115200);
 }
 
 char state = ' ';
@@ -74,7 +78,7 @@ void loop() {
     state = 'P';
     digitalWrite(N_ROW_MODE_SEL, LOW);
     digitalWrite(N_ROW_DEC_EN, LOW);
-    digitalWrite(ROW_MUX_EN, HIGH);
+    digitalWrite(ROW_MUX_EN, LOW);
     digitalWrite(COL_MUX_EN, HIGH);
     digitalWrite(RST_MUX_EN, LOW);
     if (!hasPrinted) {
@@ -96,11 +100,7 @@ void loop() {
   }
   else if (cmd == 'Z') { // off mode
     state = 'Z';
-    digitalWrite(N_ROW_MODE_SEL, HIGH);
-    digitalWrite(N_ROW_DEC_EN, HIGH);
-    digitalWrite(ROW_MUX_EN, LOW);
-    digitalWrite(COL_MUX_EN, LOW);
-    digitalWrite(RST_MUX_EN, LOW);
+    offMode();
     if (!hasPrinted) {
       Serial.println("Z");
       hasPrinted = true;
