@@ -473,14 +473,17 @@ with open(full_path, 'w', newline = '') as file:
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " col/SHIELD short(s) in array " + suffix)
     elif (states[index] == "RESET_SWEEP"): # this only sweeps the reset lines; no measurements taken. This writes an empty CSV.
-        ser.write(b'S')
-        time.sleep(DELAY_TIME)
-        ser.write(b'T')
-        time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Reset 0/16", length = 16)
         for i in range(0, 16):
+            ser.write(b'Z')
+            time.sleep(DELAY_TIME)
+            ser.write(b'T')
+            time.sleep(DELAY_TIME)
             ser.write(bytes(hex(i)[2:], 'utf-8'))
             time.sleep(DELAY_TIME)
+            ser.write(b'S')
+            time.sleep(DELAY_TIME)
+            # do stuff here
             printProgressBar(i+1, 16, suffix = "Reset " + str(i+1) + "/16", length = 16)
 
 print("\nDone! Results saved to: " + full_path)
