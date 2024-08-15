@@ -258,6 +258,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf
+        time.sleep(DELAY_TIME)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
         out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
         for i in range(len(out_array)):
@@ -305,6 +306,7 @@ with open(full_path, 'w', newline = '') as file:
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf        
 
+        time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         num_shorts = 0
         for row in range(0, 16):
@@ -337,6 +339,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf        
+        time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         num_shorts = 0
         for col in range(0, 16):
@@ -420,7 +423,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf        
-
+        time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         num_shorts = 0
         for row in range(0, 16):
@@ -454,6 +457,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf        
+        time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         num_shorts = 0
         for col in range(0, 16):
@@ -485,6 +489,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             # do stuff here
             printProgressBar(i+1, 16, suffix = "Reset " + str(i+1) + "/16", length = 16)
+            time.sleep(DELAY_TIME)
 
 print("\nDone! Results saved to: " + full_path)
 time.sleep(DELAY_TEST_EQUIPMENT_TIME)
