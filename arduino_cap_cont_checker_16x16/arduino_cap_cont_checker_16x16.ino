@@ -84,8 +84,8 @@ void loop() {
   }
   else if (cmd == 'S') { // reset sweep mode
     state = 'S';
-    digitalWrite(N_ROW_MODE_SEL, LOW);
-    digitalWrite(N_ROW_DEC_EN, LOW);
+    digitalWrite(N_ROW_MODE_SEL, HIGH);
+    digitalWrite(N_ROW_DEC_EN, HIGH);
     digitalWrite(ROW_MUX_EN, LOW);
     digitalWrite(COL_MUX_EN, LOW);
     digitalWrite(RST_MUX_EN, HIGH);
@@ -96,8 +96,8 @@ void loop() {
   }
   else if (cmd == 'Z') { // off mode
     state = 'Z';
-    digitalWrite(N_ROW_MODE_SEL, LOW);
-    digitalWrite(N_ROW_DEC_EN, LOW);
+    digitalWrite(N_ROW_MODE_SEL, HIGH);
+    digitalWrite(N_ROW_DEC_EN, HIGH);
     digitalWrite(ROW_MUX_EN, LOW);
     digitalWrite(COL_MUX_EN, LOW);
     digitalWrite(RST_MUX_EN, LOW);
