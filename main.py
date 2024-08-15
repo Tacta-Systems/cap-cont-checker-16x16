@@ -380,16 +380,18 @@ with open(full_path, 'w', newline = '') as file:
         out_array[1][0] = "Resistance (ohm)"
         num_shorts = 0
         for row in range(0, 16):
-            ser.write(b'P')                                     # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
-            time.sleep(DELAY_TIME)
-            ser.write(b'R')                                     # set mode to row write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(row)[2:], 'utf-8'))             # write row index
-            time.sleep(DELAY_TIME)
             for col in range(0, 16):
+                ser.write(b'Z')                                     # set row switches to high-Z and disable muxes
+                time.sleep(DELAY_TIME)                
+                ser.write(b'R')                                     # set mode to row write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(row)[2:], 'utf-8'))             # write row index
+                time.sleep(DELAY_TIME)                
                 ser.write(b'L')                                 # set mode to column write mode
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(col)[2:], 'utf-8'))         # write column index
+                time.sleep(DELAY_TIME)
+                ser.write(b'P')                                     # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
                 time.sleep(DELAY_TIME)
                 tft_on_meas = float(inst.query('read?')[:-1])   # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)           # TODO: see how small we can make this delay
@@ -413,19 +415,22 @@ with open(full_path, 'w', newline = '') as file:
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
-        writer.writerow(["S/N", "Col Index", "Row Res. to SHIELD (ohm)"])
+        writer.writerow(["S/N", "Row Index", "Row Res. to SHIELD (ohm)"])
         inst.query('meas:res?')                              # set Keithley mode to resistance measurement
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf        
-        ser.write(b'O')                                      # set mode to continuity check mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'R')                                      # set mode to column write mode
-        time.sleep(DELAY_TIME)
+
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         num_shorts = 0
         for row in range(0, 16):
-            ser.write(bytes(hex(row)[2:], 'utf-8'))            # write the column address to the tester
+            ser.write(b'Z')                                      # set row switches to high-Z and disable muxes
+            time.sleep(DELAY_TIME)
+            ser.write(b'R')                                      # set mode to row write mode
+            time.sleep(DELAY_TIME)
+            ser.write(bytes(hex(row)[2:], 'utf-8'))            # write the row address to the tester
+            time.sleep(DELAY_TIME)
+            ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
             val = float(inst.query('read?')[:-1])            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
