@@ -337,14 +337,16 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf        
-        ser.write(b'O')                                      # set mode to continuity check mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'L')                                      # set mode to column write mode
-        time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         num_shorts = 0
         for col in range(0, 16):
+            ser.write(b'Z')                                      # set row switches to high-Z and disable muxes
+            time.sleep(DELAY_TIME)
+            ser.write(b'L')                                      # set mode to column write mode
+            time.sleep(DELAY_TIME)
             ser.write(bytes(hex(col)[2:], 'utf-8'))            # write the column address to the tester
+            time.sleep(DELAY_TIME)
+            ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
             val = float(inst.query('read?')[:-1])            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
