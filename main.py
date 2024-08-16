@@ -301,13 +301,14 @@ with open(full_path, 'w', newline = '') as file:
         out_array = np.delete(out_array, (0), axis=1)
         out_array = out_array[2:]
         text_array = np.zeros((out_array.shape[0], out_array.shape[1]), dtype='U64')
-        for row in range(out_array.shape[0]):
-            for col in range(out_array.shape[1]):
-                if (float(out_array[row][col]) > RES_SHORT_THRESHOLD_ROWCOL):
-                    print(".", end="")
-                else:
-                    print("█", end="")
-            print("")
+        if (num_shorts > 0):
+            for row in range(out_array.shape[0]):
+                for col in range(out_array.shape[1]):
+                    if (float(out_array[row][col]) > RES_SHORT_THRESHOLD_ROWCOL):
+                        print(".", end="")
+                    else:
+                        print("█", end="")
+                print("")
     elif (states[index] == "CONT_PZBIAS_TO_ROW"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
@@ -346,7 +347,8 @@ with open(full_path, 'w', newline = '') as file:
                 out_text += "."
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " row/PZBIAS short(s) in array " + suffix)
-        print(out_text)
+        if (num_shorts > 0):
+            print(out_text)
     elif (states[index] == "CONT_PZBIAS_TO_COL"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
@@ -385,7 +387,8 @@ with open(full_path, 'w', newline = '') as file:
                 out_text += "."
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " col/PZBIAS short(s) in array " + suffix)
-        print(out_text)
+        if (num_shorts > 0):
+            print(out_text)
     elif (states[index] == "CONT_PZBIAS_TO_COL_TFTS_ON"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
@@ -440,13 +443,13 @@ with open(full_path, 'w', newline = '') as file:
         ser.write(b'I')                                         # mode that sets all +15/-8V switches to -8V
         time.sleep(DELAY_TIME)
         print("There were " + str(num_shorts) + " PZBIAS/col short(s) in array " + suffix)
-        print(out_text)
+        if (num_shorts > 0):
+            print(out_text)
         np.savetxt(path + part_name + "_alt.csv", out_array, delimiter=",", fmt="%s")
     elif (states[index] == "CONT_SHIELD_TO_ROW"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- Run CONT_PZBIAS_TO_ROW test, and note any columns shorted to PZBIAS if any" +
               "\n- Switch the PZBIAS <--> SHIELD switch to ON" +
-              "\n- Ensure power supply is ON!" +
               "\n- Connect two SMA to DuPont cables, one to ROW, one to COL" + 
               "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL outside/black" +
               "\n- Ensure power supply is ON!" +              
@@ -482,7 +485,8 @@ with open(full_path, 'w', newline = '') as file:
                 out_text += "."
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " row/SHIELD short(s) in array " + suffix)
-        print(out_text)
+        if (num_shorts > 0):
+            print(out_text)
     elif (states[index] == "CONT_SHIELD_TO_COL"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- Run CONT_PZBIAS_TO_COL test, and note any columns shorted to PZBIAS if any" +
@@ -522,7 +526,8 @@ with open(full_path, 'w', newline = '') as file:
                 out_text += "."                
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " col/SHIELD short(s) in array " + suffix)
-        print(out_text)
+        if (num_shorts > 0):
+            print(out_text)
     elif (states[index] == "RESET_SWEEP"): # this only sweeps the reset lines; no measurements taken. This writes an empty CSV.
         printProgressBar(0, 16, suffix = "Reset 0/16", length = 16)
         for i in range(0, 16):
