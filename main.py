@@ -192,7 +192,8 @@ with open(full_path, 'w', newline = '') as file:
               "\n- Run row/column, row/PZBIAS, col/PZBIAS continuity tests and ensure all open circuit" +
               "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect one SMA to DuPont cable to COL" +
-              "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black")
+              "\n- Connect red DMM lead to COL center/red, black DMM lead to COL outside/black" +
+              "\n- Ensure power supply is ON!")
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
@@ -253,7 +254,8 @@ with open(full_path, 'w', newline = '') as file:
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect two SMA to DuPont cables, one to ROW, one to COL" + 
-              "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL center/red")
+              "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL center/red" +
+              "\n- Ensure power supply is ON!")
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
@@ -295,13 +297,24 @@ with open(full_path, 'w', newline = '') as file:
                 writer.writerow([suffix, str(row+1), str(col+1), val])
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         np.savetxt(path + part_name + "_alt.csv", out_array, delimiter=",", fmt="%s")
-        print("There were " + str(num_shorts) + " row/col short(s) in array " + suffix)
+        print("There were " + str(num_shorts) + " row/col short(s) in array " + suffix + "\n")
+        out_array = np.delete(out_array, (0), axis=1)
+        out_array = out_array[2:]
+        text_array = np.zeros((out_array.shape[0], out_array.shape[1]), dtype='U64')
+        for row in range(out_array.shape[0]):
+            for col in range(out_array.shape[1]):
+                if (float(out_array[row][col]) > RES_SHORT_THRESHOLD_ROWCOL):
+                    print(".", end="")
+                else:
+                    print("█", end="")
+            print("")
     elif (states[index] == "CONT_PZBIAS_TO_ROW"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect two SMA to DuPont cables, one to ROW, one to COL" + 
-              "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL outside/black")
+              "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL outside/black" +
+              "\n- Ensure power supply is ON!")              
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
@@ -310,10 +323,10 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         inst.write('sens:res:rang 10E6')                     # set resistance measurement range to 10 MOhm for 0.7uA test current, per
                                                              # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf        
-
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         num_shorts = 0
+        out_text = ""
         for row in range(0, 16):
             ser.write(b'Z')                                      # set row switches to high-Z and disable muxes
             time.sleep(DELAY_TIME)
@@ -328,14 +341,19 @@ with open(full_path, 'w', newline = '') as file:
             writer.writerow([suffix, str(row+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
+                out_text += "█"
+            else:
+                out_text += "."
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " row/PZBIAS short(s) in array " + suffix)
+        print(out_text)
     elif (states[index] == "CONT_PZBIAS_TO_COL"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect one SMA to DuPont cable to COL" + 
-              "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black")
+              "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black" +
+              "\n- Ensure power supply is ON!")              
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
@@ -347,6 +365,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         num_shorts = 0
+        out_text = ""
         for col in range(0, 16):
             ser.write(b'Z')                                      # set row switches to high-Z and disable muxes
             time.sleep(DELAY_TIME)
@@ -361,14 +380,19 @@ with open(full_path, 'w', newline = '') as file:
             writer.writerow([suffix, str(col+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
+                out_text += "█"
+            else:
+                out_text += "."
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " col/PZBIAS short(s) in array " + suffix)
+        print(out_text)
     elif (states[index] == "CONT_PZBIAS_TO_COL_TFTS_ON"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- If new flex, multimeter probe the LOOP1A/B and LOOP2A/B board testpoints for continuity" +
               "\n- Switch the PZBIAS <--> SHIELD switch to OFF" +
               "\n- Connect one SMA to DuPont cable to COL" +
-              "\n- Connect red DMM lead to COL center/red, black DMM lead to COL outside/black")
+              "\n- Connect red DMM lead to COL center/red, black DMM lead to COL outside/black" +
+              "\n- Ensure power supply is ON!")              
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
@@ -387,6 +411,7 @@ with open(full_path, 'w', newline = '') as file:
         out_array[0][2] = dt.datetime.now()
         out_array[1][0] = "Resistance (ohm)"
         num_shorts = 0
+        out_text = ""
         for row in range(0, 16):
             for col in range(0, 16):
                 ser.write(b'Z')                                     # set row switches to high-Z and disable muxes
@@ -405,20 +430,26 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)           # TODO: see how small we can make this delay
                 if (tft_on_meas < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                     num_shorts += 1
+                    out_text += "█"
+                else:
+                    out_text += "."
                 out_array[(16-row)+1][col+1] = tft_on_meas
                 writer.writerow([suffix, str(row+1), str(col+1), tft_on_meas]) # appends to CSV with 1 index
                 time.sleep(DELAY_TIME)
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         ser.write(b'I')                                         # mode that sets all +15/-8V switches to -8V
         time.sleep(DELAY_TIME)
-        print("There were " + str(num_shorts) + " row/col short(s) in array " + suffix)
+        print("There were " + str(num_shorts) + " PZBIAS/col short(s) in array " + suffix)
+        print(out_text)
         np.savetxt(path + part_name + "_alt.csv", out_array, delimiter=",", fmt="%s")
     elif (states[index] == "CONT_SHIELD_TO_ROW"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- Run CONT_PZBIAS_TO_ROW test, and note any columns shorted to PZBIAS if any" +
               "\n- Switch the PZBIAS <--> SHIELD switch to ON" +
+              "\n- Ensure power supply is ON!" +
               "\n- Connect two SMA to DuPont cables, one to ROW, one to COL" + 
-              "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL outside/black"
+              "\n- Connect one DMM lead to ROW center/red, one DMM lead to COL outside/black" +
+              "\n- Ensure power supply is ON!" +              
               "\n- After the test, switch the PZBIAS <--> SHIELD switch to OFF")
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
@@ -431,6 +462,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         num_shorts = 0
+        out_text = ""
         for row in range(0, 16):
             ser.write(b'Z')                                      # set row switches to high-Z and disable muxes
             time.sleep(DELAY_TIME)
@@ -445,14 +477,19 @@ with open(full_path, 'w', newline = '') as file:
             writer.writerow([suffix, str(row+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
+                out_text += "█"
+            else:
+                out_text += "."
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " row/SHIELD short(s) in array " + suffix)
+        print(out_text)
     elif (states[index] == "CONT_SHIELD_TO_COL"):
         print("Connections:\n- Connect sensor to J2B ZIF conector" +
               "\n- Run CONT_PZBIAS_TO_COL test, and note any columns shorted to PZBIAS if any" +
               "\n- Switch the PZBIAS <--> SHIELD switch to ON" +
               "\n- Connect one SMA to DuPont cable to COL" +
               "\n- Connect one DMM lead to COL center/red, one DMM lead to COL outside/black" +
+              "\n- Ensure power supply is ON!" +
               "\n- After the test, switch the PZBIAS <--> SHIELD switch to OFF")
         input("Press 'enter' when ready:\n")
         writer = csv.writer(file)
@@ -465,6 +502,7 @@ with open(full_path, 'w', newline = '') as file:
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         num_shorts = 0
+        out_text = ""
         for col in range(0, 16):
             ser.write(b'Z')                                      # set row switches to high-Z and disable muxes
             time.sleep(DELAY_TIME)
@@ -479,8 +517,12 @@ with open(full_path, 'w', newline = '') as file:
             writer.writerow([suffix, str(col+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
+                out_text += "█"
+            else:
+                out_text += "."                
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
         print("There were " + str(num_shorts) + " col/SHIELD short(s) in array " + suffix)
+        print(out_text)
     elif (states[index] == "RESET_SWEEP"): # this only sweeps the reset lines; no measurements taken. This writes an empty CSV.
         printProgressBar(0, 16, suffix = "Reset 0/16", length = 16)
         for i in range(0, 16):
