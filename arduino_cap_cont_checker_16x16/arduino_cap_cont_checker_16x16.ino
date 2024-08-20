@@ -106,7 +106,7 @@ void loop() {
       hasPrinted = true;
     }
   }
-  if (cmd == 'I') { // binary counter disable mode
+  else if (cmd == 'I') { // binary counter disable mode
     state = 'I';
     digitalWrite(N_ROW_MODE_SEL, LOW);
     digitalWrite(N_ROW_DEC_EN, HIGH);

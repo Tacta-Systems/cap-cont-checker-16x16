@@ -7,7 +7,7 @@ Hardware requirements:
 - For arrays without flex attached, probe station aligner that joins flex to sensor
 - Assembled 00013+00014 tester boards
 - Arduino MEGA 2560 R3
-  * F - F ribbon cable from Arduino P36/37 to GND
+  * 10x2pin socket - socket ribbon cable from Arduino P36/37 to GND
   * Male header pins, double length (Amazon B077N29TP5)
   
   **************************************************************
