@@ -81,6 +81,9 @@ except Exception as e:
 # Have pyvisa handle line termination
 inst.read_termination = '\n'
 
+# Clear buffer and status
+inst.write('*CLS')
+
 # List serial ports
 print("\nListing available serial ports below:")
 ports = serial.tools.list_ports.comports()
