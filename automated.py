@@ -136,13 +136,18 @@ print("\nSetup Instructions:\n" +
       "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
       "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
       "- Ensure power supply is ON\n" +
-      "If there are shorts, the terminal output (.) means open and (█) means short")
+      "\nIf there are shorts, the terminal output (.) means open and (█) means short")
 
 dut_name_input = input("\nPlease enter the name/variant of this board: ")
 
 test_selection_raw = input("\nPlease hit 'enter' for default test, or type '1' to " +
                            "skip continuity checks and only run cap and TFT continuity tests: ")
-skip_cont_tests = True if test_selection_raw == "1" else False
+if (test_selection_raw == "1"):
+    skip_cont_tests = True
+    print("Running only cap and TFT ON tests...")
+else:
+    skip_cont_tests = False
+    print("Running all tests...")
 
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     """
@@ -569,18 +574,32 @@ if (not skip_cont_tests):
     if hasShorts:
         print("This array doesn't have pants... it has shorts!")
         response = input("Type 'test' and 'enter' to continue, or hit 'enter' to quit: ")
-
     if (response.lower() == "test"):
-        print("")
-        test_cap_sensor()
+        print("Running cap and TFT continuity tests...")
+        test_selection_raw = input("\nPlease hit 'enter' for default cap test 1nF range, or type '1' to " +
+                                   "run capacitance test with 10nF range: ")
+        meas_range_input = '1e-9'
+        if (test_selection_raw == "1"):
+            meas_range_input = '1e-8'
+            print("Running cap test with new 10nF range...\n")
+        else:
+            meas_range_input = '1e-9'
+            print("Running cap test with default 1nF range...\n")
+        test_cap_sensor(dut_name_input, meas_range_input)
         test_cont_col_to_pzbias_tfts_on()
     else:
         print("Exiting program now...")
         time.sleep(5)
         sys.exit(0)
 else:
-    test_selection_raw = input("\nPlease hit 'enter' for default test, or type '1' to " +
-                               "run capacitance test with 1e-8 range (vs default 1e-9 range): ")
-    meas_range_input = '1e-8' if test_selection_raw == "1" else '1e-9'
+    test_selection_raw = input("\nPlease hit 'enter' for default cap test 1nF range, or type '1' to " +
+                               "run capacitance test with 10nF range: ")
+    meas_range_input = '1e-9'
+    if (test_selection_raw == "1"):
+        meas_range_input = '1e-8'
+        print("Running cap test with new 10nF range...\n")
+    else:
+        meas_range_input = '1e-9'
+        print("Running cap test with default 1nF range...\n")
     test_cap_sensor(dut_name_input, meas_range_input)
     test_cont_col_to_pzbias_tfts_on()
