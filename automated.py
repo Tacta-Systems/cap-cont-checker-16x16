@@ -578,7 +578,7 @@ if (not skip_cont_tests):
         print("Exiting program now...")
         time.sleep(5)
         sys.exit(0)
-else
+else:
     test_selection_raw = input("\nPlease hit 'enter' for default test, or type '1' to " +
                                "run capacitance test with 1e-8 range (vs default 1e-9 range): ")
     meas_range_input = '1e-8' if test_selection_raw == "1" else '1e-9'
