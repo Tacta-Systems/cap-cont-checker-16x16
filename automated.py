@@ -12,11 +12,11 @@ Hardware requirements:
   * Male header pins, double length (Amazon B077N29TP5)
   * 14x plug to socket ribbon cable to secondary board
   
-  **************************************************************
-  *** RUNNING THE NO_ACK CODE THAT DOES NOT REPLY VIA SERIAL ***
-  **************************************************************
+  *******************************************************************************************************
+  *** RUNNING THE AUTOMATED_ARDUINO_CAP_CONT_CHECKER_16X16_NO_ACK CODE THAT DOES NOT REPLY VIA SERIAL ***
+  *******************************************************************************************************
 
-- Short (6") BNC to SMA cable + BNC to banana plug
+- BNC to SMA cable + BNC to banana plug
 
 - Add more wires here as the test setup gets built
 
@@ -27,7 +27,7 @@ Software requirements
   * numpy library
   * serial library
   * csv library
-  * datetime library
+  * datetime
 
 ONE INDEXED OUTPUT!
 '''
@@ -131,6 +131,12 @@ except Exception as e:
     print(f"Error opening serial port: {e}")
     sys.exit(0)
 
+print("\nSetup Instructions:\n" +
+      "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
+      "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
+      "- Ensure power supply is ON\n" +
+      "If there are shorts, the terminal output (.) means open and (█) means short")
+
 dut_name_input = input("\nPlease enter the name/variant of this board: ")
 
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
@@ -167,9 +173,14 @@ the reason we're using these names is because we're limited to one character + c
 - 'R' for writing to the row muxes
 - 'L' for writing to the column muxes
 - 'T' for writing to the reset muxes
+- 'U' for writing secondary board to "row/col" output
+- 'V' for writing secondary board to "row/PZBIAS" output
+- 'W' for writing secondary board to "col/PZBIAS" output
+- 'X' for writing secondary board to "row/SHIELD" output
+- 'Y' for writing secondary board to "col/SHIELD" output
 '''
 
-def test_cap_sensor (dut_name, start_row=0, start_col=0, end_row=16,end_col=16):
+def test_cap_sensor (dut_name=dut_name_input, start_row=0, start_col=0, end_row=16,end_col=16):
     test_name = "CAP_SENSOR"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
@@ -230,8 +241,8 @@ def test_cap_sensor (dut_name, start_row=0, start_col=0, end_row=16,end_col=16):
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
-
-def test_cont_row_to_col(dut_name, start_row=0, start_col=0, end_row=16, end_col=16):
+    print("\n")
+def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CONT_ROW_TO_COL"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -289,9 +300,10 @@ def test_cont_row_to_col(dut_name, start_row=0, start_col=0, end_row=16, end_col
                 else:
                     print("█", end="")
             print("")
+        print("\n")
     return num_shorts
 
-def test_cont_row_to_pzbias(dut_name, start_row=0, end_row=16):
+def test_cont_row_to_pzbias(dut_name=dut_name_input, start_row=0, end_row=16):
     test_name = "CONT_ROW_TO_PZBIAS"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
@@ -328,9 +340,10 @@ def test_cont_row_to_pzbias(dut_name, start_row=0, end_row=16):
     print("There were " + str(num_shorts) + " row/PZBIAS short(s) in array " + dut_name)
     if (num_shorts > 0):
         print(out_text)
+    print("\n")
     return num_shorts
 
-def test_cont_col_to_pzbias(dut_name, start_col=0, end_col=16):
+def test_cont_col_to_pzbias(dut_name=dut_name_input, start_col=0, end_col=16):
     test_name = "CONT_COL_TO_PZBIAS"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
@@ -367,10 +380,11 @@ def test_cont_col_to_pzbias(dut_name, start_col=0, end_col=16):
     print("There were " + str(num_shorts) + " col/PZBIAS short(s) in array " + dut_name)
     if (num_shorts > 0):
         print(out_text)
+    print("\n")
     return num_shorts
 
 # TODO: implement 2x2 data visualizer in this function + fix this!!!
-def test_cont_col_to_pzbias_tfts_on(dut_name, start_row=0, end_row=16, start_col=0, end_col=16):
+def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_row=16, start_col=0, end_col=16):
     test_name = "CONT_COL_TO_PZBIAS_TFTS_ON"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
@@ -437,9 +451,10 @@ def test_cont_col_to_pzbias_tfts_on(dut_name, start_row=0, end_row=16, start_col
                 else:
                     print("█", end="")
             print("")
+    print("\n")
     return num_shorts
 
-def test_cont_row_to_shield(dut_name, start_row=0, end_row=16):
+def test_cont_row_to_shield(dut_name=dut_name_input, start_row=0, end_row=16):
     test_name = "CONT_ROW_TO_SHIELD"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
@@ -476,9 +491,10 @@ def test_cont_row_to_shield(dut_name, start_row=0, end_row=16):
     print("There were " + str(num_shorts) + " row/SHIELD short(s) in array " + dut_name)
     if (num_shorts > 0):
         print(out_text)
+    print("\n")
     return num_shorts
 
-def test_cont_col_to_shield(dut_name, start_col=0, end_col=16):
+def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
     test_name = "CONT_COL_TO_SHIELD"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
@@ -517,9 +533,10 @@ def test_cont_col_to_shield(dut_name, start_col=0, end_col=16):
     print("There were " + str(num_shorts) + " col/SHIELD short(s) in array " + dut_name)
     if (num_shorts > 0):
         print(out_text)
+    print("\n")
     return num_shorts
 
-def test_reset_sweep(dut_name, start_rst=0, end_rst=16):
+def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
     printProgressBar(0, 16, suffix = "Reset 0/16", length = 16)
     for i in range(start_rst, end_rst):
         ser.write(b'Z')
@@ -536,3 +553,20 @@ def test_reset_sweep(dut_name, start_rst=0, end_rst=16):
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
 
+result1 = test_cont_row_to_col()
+result2 = test_cont_row_to_pzbias()
+result3 = test_cont_col_to_pzbias()
+result4 = test_cont_row_to_shield()
+result5 = test_cont_col_to_shield()
+hasShorts = result1>0 or result2>0 or result3>0 or result4>0 or result5>0
+response = "test"
+if hasShorts:
+    print("This array doesn't have pants... it has shorts!")
+    response = input("Type 'test' and enter to continue, or hit 'enter' to quit")
+
+if (response.lower() == "test"):
+    test_cap_sensor()
+    test_cont_col_to_pzbias_tfts_on()
+else:
+    print("Exiting program now...")
+    sys.exit(0)
