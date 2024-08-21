@@ -78,6 +78,9 @@ except Exception as e:
     print(f"VISA connection error: {e}")
     sys.exit(0)
 
+# Have pyvisa handle line termination
+inst.read_termination = '\n'
+
 # List serial ports
 print("\nListing available serial ports below:")
 ports = serial.tools.list_ports.comports()
@@ -225,7 +228,7 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(b'I')                              # "OFF" measurement" - continuity check mode disconnects the +15/-8V switches
                 time.sleep(DELAY_TIME)
-                tft_off_meas = float(inst.query('read?')[:-1])   # read mux off measurement
+                tft_off_meas = float(inst.query('read?'))   # read mux off measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
                 ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
@@ -239,7 +242,7 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
                 time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('read?')[:-1])    # read mux on measurement
+                tft_on_meas = float(inst.query('read?'))    # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
                 tft_cal_meas = tft_on_meas - tft_off_meas
                 out_array[(16-row)+1][col+1] = tft_cal_meas*1e12
@@ -289,7 +292,7 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(b'O')                                  # set mode to continuity check
                 time.sleep(DELAY_TIME)
-                val = float(inst.query('read?')[:-1])               # read resistance measurement
+                val = float(inst.query('read?'))               # read resistance measurement
                 out_array[(16-row)+1][col+1] = val
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
                 if (val < RES_SHORT_THRESHOLD_ROWCOL):
@@ -337,7 +340,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
-            val = float(inst.query('read?')[:-1])            # read resistance from the meter
+            val = float(inst.query('read?'))            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
             writer.writerow([suffix, str(row+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
@@ -377,7 +380,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
-            val = float(inst.query('read?')[:-1])            # read resistance from the meter
+            val = float(inst.query('read?'))            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
             writer.writerow([suffix, str(col+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
@@ -429,7 +432,7 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(b'P')                                     # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
                 time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('read?')[:-1])   # read mux on measurement
+                tft_on_meas = float(inst.query('read?'))   # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)           # TODO: see how small we can make this delay
                 if (tft_on_meas < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                     num_shorts += 1
@@ -475,7 +478,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
-            val = float(inst.query('read?')[:-1])            # read resistance from the meter
+            val = float(inst.query('read?'))            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
             writer.writerow([suffix, str(row+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
@@ -516,7 +519,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
-            val = float(inst.query('read?')[:-1])            # read resistance from the meter
+            val = float(inst.query('read?'))            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
             writer.writerow([suffix, str(col+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
