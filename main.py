@@ -105,8 +105,7 @@ if (len(list_of_ports)) == 0:
 
 # Query user for the Arduino COM port, will run until valid state given
 # Can comment out this section if running on one computer
-port = "COM3" # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
-
+ser.port = "COM5" # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 '''
 while True:
     try:
@@ -119,9 +118,7 @@ while True:
         continue
     else:
         break
-
 '''
-ser.port = port
 
 try:
     ser.open()

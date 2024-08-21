@@ -47,7 +47,7 @@ from tkinter import filedialog
 VISA_SERIAL_NUMBER = "04611761"
 
 ser = serial.Serial()
-ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -338,7 +338,7 @@ def test_cont_col_to_pzbias(dut_name, start_col=0, end_col=16):
     inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
     time.sleep(DELAY_TIME)
     print("Sensor Col to PZBIAS Continuity Detection Running...")
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv") as file:        
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline="") as file:        
         writer = csv.writer(file)
         writer.writerow(["Col Index", "Col. Res. to PZBIAS (ohm)"])
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
@@ -478,7 +478,7 @@ def test_cont_row_to_shield(dut_name, start_row=0, end_row=16):
         print(out_text)
     return num_shorts
 
-def test_cont_col_to_shield(dut_name, start_col=16, end_col=16):
+def test_cont_col_to_shield(dut_name, start_col=0, end_col=16):
     test_name = "CONT_COL_TO_SHIELD"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
