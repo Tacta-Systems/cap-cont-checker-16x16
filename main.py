@@ -209,7 +209,7 @@ with open(full_path, 'w', newline = '') as file:
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
         writer.writerow(["S/N", "Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
-        inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
+        inst.query('meas:cap?')                              # dummy read
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
@@ -234,7 +234,7 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(b'I')                              # "OFF" measurement" - continuity check mode disconnects the +15/-8V switches
                 time.sleep(DELAY_TIME)
-                tft_off_meas = float(inst.query('read?'))   # read mux off measurement
+                tft_off_meas = float(inst.query('meas:cap?'))   # read mux off measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
                 ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
@@ -248,7 +248,7 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
                 time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('read?'))    # read mux on measurement
+                tft_on_meas = float(inst.query('meas:cap?'))    # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
                 tft_cal_meas = tft_on_meas - tft_off_meas
                 out_array[(16-row)+1][col+1] = tft_cal_meas*1e12
@@ -270,7 +270,7 @@ with open(full_path, 'w', newline = '') as file:
         writer.writerow([suffix, states[index], dt.datetime.now()])
         writer.writerow(["S/N", "Row Index", "Column Index", "Row Res. to Col. (ohm)"])                     
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
-        inst.query('meas:res?')
+        inst.query('meas:res?')                              # dummy read
         time.sleep(DELAY_TIME)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
         out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
@@ -295,7 +295,7 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(b'O')                                  # set mode to continuity check
                 time.sleep(DELAY_TIME)
-                val = float(inst.query('read?'))               # read resistance measurement
+                val = float(inst.query('meas:res?'))              # read resistance measurement
                 out_array[(16-row)+1][col+1] = val
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
                 if (val < RES_SHORT_THRESHOLD_ROWCOL):
@@ -326,7 +326,7 @@ with open(full_path, 'w', newline = '') as file:
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
         writer.writerow(["S/N", "Row Index", "Row Res. to PZBIAS (ohm)"])
-        inst.query('meas:res?')                              # set Keithley mode to resistance measurement
+        inst.query('meas:res?')                              # dummy read
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         num_shorts = 0
@@ -340,7 +340,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
-            val = float(inst.query('read?'))            # read resistance from the meter
+            val = float(inst.query('meas:res?'))            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
             writer.writerow([suffix, str(row+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
@@ -363,7 +363,7 @@ with open(full_path, 'w', newline = '') as file:
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
         writer.writerow(["S/N", "Col Index", "Col. Res. to PZBIAS (ohm)"])
-        inst.query('meas:res?')                              # set Keithley mode to resistance measurement
+        inst.query('meas:res?')                              # dummy read
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         num_shorts = 0
@@ -377,7 +377,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
-            val = float(inst.query('read?'))            # read resistance from the meter
+            val = float(inst.query('meas:res?'))            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
             writer.writerow([suffix, str(col+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
@@ -400,7 +400,7 @@ with open(full_path, 'w', newline = '') as file:
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
         writer.writerow(["S/N", "Row Index", "Column Index", "Col. Res. to PZBIAS w/ TFTs ON (ohm)"])
-        inst.query('meas:res?')                                 # set Keithley mode to resistance measurement
+        inst.query('meas:res?')                                 # dummy read
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array = np.zeros((18, 17), dtype='U64')             # create string-typed numpy array
@@ -427,7 +427,7 @@ with open(full_path, 'w', newline = '') as file:
                 time.sleep(DELAY_TIME)
                 ser.write(b'P')                                     # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
                 time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('read?'))   # read mux on measurement
+                tft_on_meas = float(inst.query('meas:res?'))   # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)           # TODO: see how small we can make this delay
                 if (tft_on_meas < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                     num_shorts += 1
@@ -456,7 +456,7 @@ with open(full_path, 'w', newline = '') as file:
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
         writer.writerow(["S/N", "Row Index", "Row Res. to SHIELD (ohm)"])
-        inst.query('meas:res?')                              # set Keithley mode to resistance measurement
+        inst.query('meas:res?')                              # dummy read
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         num_shorts = 0
@@ -470,7 +470,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
-            val = float(inst.query('read?'))            # read resistance from the meter
+            val = float(inst.query('meas:res?'))            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
             writer.writerow([suffix, str(row+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
@@ -494,7 +494,7 @@ with open(full_path, 'w', newline = '') as file:
         writer = csv.writer(file)
         writer.writerow([suffix, states[index], dt.datetime.now()])
         writer.writerow(["S/N", "Col Index", "Col. Res. to SHIELD (ohm)"])
-        inst.query('meas:res?')                              # set Keithley mode to resistance measurement
+        inst.query('meas:res?')                              # dummy read
         time.sleep(DELAY_TIME)
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         num_shorts = 0
@@ -508,7 +508,7 @@ with open(full_path, 'w', newline = '') as file:
             time.sleep(DELAY_TIME)
             ser.write(b'O')                                      # set mode to continuity check mode
             time.sleep(DELAY_TIME)
-            val = float(inst.query('read?'))            # read resistance from the meter
+            val = float(inst.query('meas:res?'))            # read resistance from the meter
             time.sleep(DELAY_TEST_EQUIPMENT_TIME)
             writer.writerow([suffix, str(col+1), val])       # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
