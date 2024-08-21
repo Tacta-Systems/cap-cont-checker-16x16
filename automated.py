@@ -589,10 +589,9 @@ if (not skip_cont_tests):
         test_cont_col_to_pzbias_tfts_on()
     else:
         print("Exiting program now...")
-        time.sleep(5)
         sys.exit(0)
 else:
-    test_selection_raw = input("\nPlease hit 'enter' for default cap test 1nF range, or type '1' to " +
+    test_selection_raw = input("Please hit 'enter' for default cap test 1nF range, or type '1' to " +
                                "run capacitance test with 10nF range: ")
     meas_range_input = '1e-9'
     if (test_selection_raw == "1"):
