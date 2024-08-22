@@ -47,7 +47,7 @@ from tkinter import filedialog
 VISA_SERIAL_NUMBER = "04611761"
 
 ser = serial.Serial()
-ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -190,8 +190,8 @@ the reason we're using these names is because we're limited to one character + c
 - 'Y' for writing secondary board to "col/SHIELD" output
 '''
 
-def test_cap_sensor (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16,end_col=16):
-    test_name = "CAP_SENSOR"
+def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
+    test_name = "CAP_COL_TO_PZBIAS"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
@@ -229,9 +229,76 @@ def test_cap_sensor (dut_name=dut_name_input, meas_range='1e-9', start_row=0, st
                 time.sleep(DELAY_TIME)
                 tft_off_meas = float(inst.query('meas:cap?'))# read mux off measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+
                 ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
                 ser.write(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
+                time.sleep(DELAY_TIME)                
+                ser.write(b'R')                              # set mode to row write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
+                time.sleep(DELAY_TIME)
+                ser.write(b'L')                              # set mode to column write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                time.sleep(DELAY_TIME)
+                ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
+                time.sleep(DELAY_TIME)
+                tft_on_meas = float(inst.query('meas:cap?')) # read mux on measurement
+                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                tft_cal_meas = tft_on_meas - tft_off_meas
+                out_array[(16-row)+1][col+1] = tft_cal_meas*1e12
+                writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
+                time.sleep(DELAY_TIME)
+            printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+    ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
+    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
+    print("")
+
+def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
+    test_name = "CAP_COL_TO_SHIELD"
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
+        inst.write('sens:cap:rang ' + meas_range)            # limits cap range to the smallest possible value
+        time.sleep(DELAY_TIME)
+        inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
+        time.sleep(DELAY_TIME)
+        print("Sensor Capacitance Check Running...")
+        printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
+        out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
+        out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
+        for i in range(len(out_array)):
+            out_array[len(out_array)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
+        out_array[0][0] = "Capacitance Test Column to SHIELD"
+        out_array[0][1] = dut_name
+        out_array[0][2] = dt.datetime.now()
+        out_array[1][0] = "Calibrated Cap (pF)"
+
+        for row in range(start_row, end_row):
+            for col in range(start_col, end_col):
+                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
+                time.sleep(DELAY_TIME)
+                ser.write(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
+                time.sleep(DELAY_TIME)                
+                ser.write(b'R')                              # set mode to row write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
+                time.sleep(DELAY_TIME)
+                ser.write(b'L')                              # set mode to column write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                time.sleep(DELAY_TIME)
+                ser.write(b'I')                              # "OFF" measurement" - all row switches are held at -8V
+                time.sleep(DELAY_TIME)
+                tft_off_meas = float(inst.query('meas:cap?'))# read mux off measurement
+                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+
+                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
+                time.sleep(DELAY_TIME)
+                ser.write(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
                 time.sleep(DELAY_TIME)                
                 ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)
@@ -585,7 +652,8 @@ if (not skip_cont_tests):
         else:
             meas_range_input = '1e-9'
             print("Running cap test with default 1nF range...\n")
-        test_cap_sensor(dut_name_input, meas_range_input)
+        test_cap_col_to_pzbias(dut_name_input, meas_range_input)
+        test_cap_col_to_shield(dut_name_input, meas_range_input)
         test_cont_col_to_pzbias_tfts_on()
     else:
         print("Exiting program now...")
@@ -600,5 +668,6 @@ else:
     else:
         meas_range_input = '1e-9'
         print("Running cap test with default 1nF range...\n")
-    test_cap_sensor(dut_name_input, meas_range_input)
+    test_cap_col_to_pzbias(dut_name_input, meas_range_input)
+    test_cap_col_to_shield(dut_name_input, meas_range_input)
     test_cont_col_to_pzbias_tfts_on()
