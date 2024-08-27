@@ -206,9 +206,9 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
         out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
         for i in range(len(out_array)):
             out_array[len(out_array)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
-        out_array[0][0] = "Capacitance Test Column to PZBIAS"
-        out_array[0][1] = dut_name
-        out_array[0][2] = dt.datetime.now()
+        # out_array[0][0] = "Capacitance Test Column to PZBIAS"
+        # out_array[0][1] = dut_name
+        # out_array[0][2] = dt.datetime.now()
         out_array[1][0] = "Calibrated Cap (pF)"
 
         for row in range(start_row, end_row):
@@ -253,6 +253,7 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
+    out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     print("")
 
@@ -272,9 +273,9 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
         out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
         for i in range(len(out_array)):
             out_array[len(out_array)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
-        out_array[0][0] = "Capacitance Test Column to SHIELD"
-        out_array[0][1] = dut_name
-        out_array[0][2] = dt.datetime.now()
+        # out_array[0][0] = "Capacitance Test Column to SHIELD"
+        # out_array[0][1] = dut_name
+        # out_array[0][2] = dt.datetime.now()
         out_array[1][0] = "Calibrated Cap (pF)"
 
         for row in range(start_row, end_row):
@@ -319,6 +320,7 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
+    out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     print("")
 
@@ -330,9 +332,9 @@ def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_
     out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
     for i in range(len(out_array)):
         out_array[len(out_array)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
-    out_array[0][0] = "Continuity Detection Row to Column"
-    out_array[0][1] = dut_name
-    out_array[0][2] = dt.datetime.now()
+    # out_array[0][0] = "Continuity Detection Row to Column"
+    # out_array[0][1] = dut_name
+    # out_array[0][2] = dt.datetime.now()
     out_array[1][0] = "Resistance (ohm)"
     num_shorts = 0
     inst.query('meas:res?')
@@ -368,10 +370,11 @@ def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
+    out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     print("There were " + str(num_shorts) + " row/col short(s) in array " + dut_name)
     out_array = np.delete(out_array, (0), axis=1)
-    out_array = out_array[2:]
+    out_array = out_array[1:]
     if (num_shorts > 0):
         for row in range(out_array.shape[0]):
             for col in range(out_array.shape[1]):
@@ -475,9 +478,9 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
     out_array[1] = ["C" + str(i) for i in range(0, 17)]     # set cols of output array to be "C1"..."C16"
     for i in range(len(out_array)):
         out_array[len(out_array)-1-i][0] = "R" + str(i+1)   # set rows of output array to be "R1"..."R16"
-    out_array[0][0] = "Resistance Test Column to PZBIAS w/ TFTs ON"
-    out_array[0][1] = dut_name
-    out_array[0][2] = dt.datetime.now()
+    #out_array[0][0] = "Resistance Test Column to PZBIAS w/ TFTs ON"
+    #out_array[0][1] = dut_name
+    #out_array[0][2] = dt.datetime.now()
     out_array[1][0] = "Resistance (ohm)"
     print("Sensor Col to PZBIAS Continuity Detection with TFT's ON Running...")
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline="") as file: 
@@ -515,9 +518,10 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     time.sleep(DELAY_TIME)
     print("There were " + str(num_shorts) + " col/PZBIAS with TFT's ON short(s) in array " + dut_name)
+    out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     out_array = np.delete(out_array, (0), axis=1)
-    out_array = out_array[2:]
+    out_array = out_array[1:]
     if (num_shorts > 0):
         for row in range(out_array.shape[0]):
             for col in range(out_array.shape[1]):
