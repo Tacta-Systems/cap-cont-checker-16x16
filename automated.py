@@ -203,14 +203,18 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
         time.sleep(DELAY_TIME)
         print("Sensor Capacitance Check to PZBIAS Running...")
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
-        out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
-        out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
-        for i in range(len(out_array)):
-            out_array[len(out_array)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
-        # out_array[0][0] = "Capacitance Test Column to PZBIAS"
-        # out_array[0][1] = dut_name
-        # out_array[0][2] = dt.datetime.now()
-        out_array[1][0] = "Calibrated Cap (pF)"
+        out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
+        out_array_delta[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
+        for i in range(len(out_array_delta)):
+            out_array_delta[len(out_array_delta)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
+
+        out_array_on = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
+        out_array_on[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
+        for i in range(len(out_array_on)):
+            out_array_on[len(out_array_on)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
+
+        out_array_delta[1][0] = "Cap TFT On - Cap TFT Off (pF)"
+        out_array_on[1][0] = "Cap TFT On (pF)"
 
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
@@ -248,16 +252,19 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
                 tft_on_meas = float(inst.query('meas:cap?')) # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
                 tft_cal_meas = tft_on_meas - tft_off_meas
-                out_array[(16-row)+1][col+1] = tft_cal_meas*1e12
+                out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
+                out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
                 time.sleep(DELAY_TIME)
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
-    out_array = np.delete(out_array, (0), axis=0)
-    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
+    out_array_delta = np.delete(out_array_delta, (0), axis=0)
+    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
+    out_array_on = np.delete(out_array_on, (0), axis=0)
+    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_on.csv", out_array_on, delimiter=",", fmt="%s")
     print("")
-    return (0, "")
+    return (0, "Ran cap col to PZBIAS test w/ " + str(meas_range) + " F range\n")
  
 # TODO? implement string output of cap check as a returned value in the tuple
 def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
@@ -272,14 +279,18 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
         time.sleep(DELAY_TIME)
         print("Sensor Capacitance Check to SHIELD Running...")
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
-        out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
-        out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
-        for i in range(len(out_array)):
-            out_array[len(out_array)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
-        # out_array[0][0] = "Capacitance Test Column to SHIELD"
-        # out_array[0][1] = dut_name
-        # out_array[0][2] = dt.datetime.now()
-        out_array[1][0] = "Calibrated Cap (pF)"
+        out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
+        out_array_delta[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
+        for i in range(len(out_array_delta)):
+            out_array_delta[len(out_array_delta)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
+        
+        out_array_on = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
+        out_array_on[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
+        for i in range(len(out_array_on)):
+            out_array_on[len(out_array_on)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
+
+        out_array_delta[1][0] = "Cap TFT On - Cap TFT Off (pF)"
+        out_array_on[1][0] = "Cap TFT On (pF)"
 
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
@@ -317,15 +328,19 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
                 tft_on_meas = float(inst.query('meas:cap?')) # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
                 tft_cal_meas = tft_on_meas - tft_off_meas
-                out_array[(16-row)+1][col+1] = tft_cal_meas*1e12
+                out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
+                out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
                 time.sleep(DELAY_TIME)
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
-    out_array = np.delete(out_array, (0), axis=0)
-    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
+    out_array_delta = np.delete(out_array_delta, (0), axis=0)
+    out_array_on = np.delete(out_array_on, (0), axis=0)
+    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
+    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_on.csv", out_array_on, delimiter=",", fmt="%s")
     print("")
+    return (0, "Ran cap col to SHIELD test w/ " + str(meas_range) + " F range\n")
 
 def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CONT_ROW_TO_COL"
@@ -505,7 +520,9 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
     #out_array[0][1] = dut_name
     #out_array[0][2] = dt.datetime.now()
     out_array[1][0] = "Resistance (ohm)"
-    print("Sensor Col to PZBIAS Continuity Detection with TFT's ON Running...")
+    out_text += "Sensor Col to PZBIAS Continuity Detection with TFT's ON Running..."
+    print(out_text)
+    out_text += "\n"
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline="") as file: 
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Col. Res. to PZBIAS w/ TFTs ON (ohm)"])
@@ -530,9 +547,6 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)           # TODO: see how small we can make this delay
                 if (tft_on_meas < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                     num_shorts += 1
-                    out_text += "X"
-                else:
-                    out_text += "."
                 out_array[(16-row)+1][col+1] = tft_on_meas
                 writer.writerow([str(row+1), str(col+1), tft_on_meas]) # appends to CSV with 1 index
                 time.sleep(DELAY_TIME)
@@ -540,7 +554,9 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     time.sleep(DELAY_TIME)
-    print("There were " + str(num_shorts) + " col/PZBIAS with TFT's ON short(s) in array " + dut_name)
+    num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS with TFT's ON short(s) in array " + dut_name
+    print(num_shorts_text)
+    out_text += num_shorts_text + "\n"
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     out_array = np.delete(out_array, (0), axis=1)
@@ -550,11 +566,14 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
             for col in range(out_array.shape[1]):
                 if (float(out_array[row][col]) > RES_SHORT_THRESHOLD_ROWCOL):
                     print(".", end="")
+                    out_text += "."
                 else:
                     print("X", end="")
+                    out_text += "X"
             print("")
+            out_text += "\n"
     print("")
-    return (num_shorts, "")
+    return (num_shorts, out_text)
 
 def test_cont_row_to_shield(dut_name=dut_name_input, start_row=0, end_row=16):
     test_name = "CONT_ROW_TO_SHIELD"
@@ -682,7 +701,7 @@ if (not skip_cont_tests):
     out_string += cont_row_to_pzbias[1] + "\n"
     out_string += cont_col_to_pzbias[1] + "\n"
     out_string += cont_row_to_shield[1] + "\n"
-    out_string += cont_col_to_shield[1] + "\n"
+    out_string += cont_col_to_shield[1]
 
     hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0
     response = "test"
@@ -700,9 +719,9 @@ if (not skip_cont_tests):
         else:
             meas_range_input = '1e-9'
             print("Running cap test with default 1nF range...\n")
-        out_array += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
+        out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
         #test_cap_col_to_shield(dut_name_input, meas_range_input)
-        out_array += test_cont_col_to_pzbias_tfts_on()[1] + "\n"
+        out_string += test_cont_col_to_pzbias_tfts_on()[1]
     else:
         with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
             file.write(out_string)
@@ -718,9 +737,9 @@ else:
     else:
         meas_range_input = '1e-9'
         print("Running cap test with default 1nF range...\n")
-    out_array += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
+    out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
     # test_cap_col_to_shield(dut_name_input, meas_range_input)
-    out_array = test_cont_col_to_pzbias_tfts_on()[1] + "\n"
+    out_string = test_cont_col_to_pzbias_tfts_on()[1]
 
 with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
     file.write(out_string)
