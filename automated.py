@@ -93,7 +93,7 @@ inst.write('*CLS')
 
 # Set measurement ranges           CAP LIMIT SHOULD BE 1E_9
 inst.write('sens:cap:rang 1E-9') # limits cap range to the smallest possible value
-inst.write('sens:res:rang 10E6') # set resistance measurement range to 10 MOhm for 0.7uA test current, per
+inst.write('sens:res:rang 100E6')# set resistance measurement range to 100 MOhm for 0.7uA test current, per
                                  # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf
 
 
@@ -147,7 +147,7 @@ if (test_selection_raw == "1"):
     print("Running only cap and TFT ON tests...")
 else:
     skip_cont_tests = False
-    print("Running all tests...")
+    print("Running all tests...\n")
 
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     """
@@ -688,7 +688,7 @@ def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
 print
 datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
-              "\nIf there are shorts, the terminal output (.) means open and (X) means short\n\n")
+              "\nIf there are shorts, the output (.) means open and (X) means short\n\n")
 if (not skip_cont_tests):
     # these are tuples of (num shorts, output string)
     cont_row_to_column = test_cont_row_to_col()
