@@ -190,6 +190,7 @@ the reason we're using these names is because we're limited to one character + c
 - 'Y' for writing secondary board to "col/SHIELD" output
 '''
 
+# TODO? implement string output of cap check as a returned value in the tuple
 def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CAP_COL_TO_PZBIAS"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -256,7 +257,9 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     print("")
-
+    return (0, "")
+ 
+# TODO? implement string output of cap check as a returned value in the tuple
 def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CAP_COL_TO_SHIELD"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -337,9 +340,12 @@ def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_
     # out_array[0][2] = dt.datetime.now()
     out_array[1][0] = "Resistance (ohm)"
     num_shorts = 0
+    out_text = ""
     inst.query('meas:res?')
     time.sleep(DELAY_TIME)
-    print("Sensor Row to Col Continuity Detection Running...")
+    out_text += "Sensor Row to Col Continuity Detection Running..."
+    print(out_text)
+    out_text += "\n"
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Row Res. to Col. (ohm)"])
@@ -372,7 +378,9 @@ def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
-    print("There were " + str(num_shorts) + " row/col short(s) in array " + dut_name)
+    num_shorts_text = "There were " + str(num_shorts) + " row/col short(s) in array " + dut_name
+    print(num_shorts_text)
+    out_text += num_shorts_text + "\n"
     out_array = np.delete(out_array, (0), axis=1)
     out_array = out_array[1:]
     if (num_shorts > 0):
@@ -380,11 +388,14 @@ def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_
             for col in range(out_array.shape[1]):
                 if (float(out_array[row][col]) > RES_SHORT_THRESHOLD_ROWCOL):
                     print(".", end="")
+                    out_text += "."
                 else:
                     print("X", end="")
+                    out_text += "X"
             print("")
+            out_text += "\n"
     print("")
-    return num_shorts
+    return (num_shorts, out_text)
 
 def test_cont_row_to_pzbias(dut_name=dut_name_input, start_row=0, end_row=16):
     test_name = "CONT_ROW_TO_PZBIAS"
@@ -657,25 +668,23 @@ def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
 
 print
 datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-out_string = ("ArrayID: " + dut_name_input + "\n" +
-              "If there are shorts, the terminal output (.) means open and (X) means short\n\n")
+out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
+              "\nIf there are shorts, the terminal output (.) means open and (X) means short\n\n")
 if (not skip_cont_tests):
     # these are tuples of (num shorts, output string)
-    #cont_row_to_column = test_cont_row_to_col()
+    cont_row_to_column = test_cont_row_to_col()
     cont_row_to_pzbias = test_cont_row_to_pzbias()
     cont_col_to_pzbias = test_cont_col_to_pzbias()
     cont_row_to_shield = test_cont_row_to_shield()
     cont_col_to_shield = test_cont_col_to_shield()
 
-    #out_string += cont_row_to_column[1] + "\n"
+    out_string += cont_row_to_column[1] + "\n"
     out_string += cont_row_to_pzbias[1] + "\n"
     out_string += cont_col_to_pzbias[1] + "\n"
     out_string += cont_row_to_shield[1] + "\n"
     out_string += cont_col_to_shield[1] + "\n"
 
-    #hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0
-    hasShorts = True
-    
+    hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0
     response = "test"
     if hasShorts:
         print("This array doesn't have pants... it has shorts!")
@@ -713,5 +722,5 @@ else:
     # test_cap_col_to_shield(dut_name_input, meas_range_input)
     out_array = test_cont_col_to_pzbias_tfts_on()[1] + "\n"
 
-with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='', encoding='utf-8') as file:
+with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
     file.write(out_string)
