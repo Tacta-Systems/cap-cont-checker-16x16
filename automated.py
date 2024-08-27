@@ -47,7 +47,7 @@ from tkinter import filedialog
 VISA_SERIAL_NUMBER = "04611761"
 
 ser = serial.Serial()
-ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -200,7 +200,7 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
         time.sleep(DELAY_TIME)
         inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
         time.sleep(DELAY_TIME)
-        print("Sensor Capacitance Check Running...")
+        print("Sensor Capacitance Check to PZBIAS Running...")
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
         out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
@@ -216,7 +216,7 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
                 ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
                 ser.write(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
-                time.sleep(DELAY_TIME)                
+                time.sleep(DELAY_TIME)
                 ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
@@ -233,7 +233,7 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
                 ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
                 ser.write(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
-                time.sleep(DELAY_TIME)                
+                time.sleep(DELAY_TIME)
                 ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
@@ -266,7 +266,7 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
         time.sleep(DELAY_TIME)
         inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
         time.sleep(DELAY_TIME)
-        print("Sensor Capacitance Check Running...")
+        print("Sensor Capacitance Check to SHIELD Running...")
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
         out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
@@ -282,7 +282,7 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
                 ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
                 ser.write(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
-                time.sleep(DELAY_TIME)                
+                time.sleep(DELAY_TIME)
                 ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
@@ -299,7 +299,7 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
                 ser.write(b'Z')                              # set row switches to high-Z and disable muxes
                 time.sleep(DELAY_TIME)
                 ser.write(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
-                time.sleep(DELAY_TIME)                
+                time.sleep(DELAY_TIME)
                 ser.write(b'R')                              # set mode to row write mode
                 time.sleep(DELAY_TIME)
                 ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
@@ -479,7 +479,7 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
     out_array[0][1] = dut_name
     out_array[0][2] = dt.datetime.now()
     out_array[1][0] = "Resistance (ohm)"
-    print("Sensor Col to PZBIAS Continuity Detection with TFT's ON Running...")  
+    print("Sensor Col to PZBIAS Continuity Detection with TFT's ON Running...")
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline="") as file: 
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Col. Res. to PZBIAS w/ TFTs ON (ohm)"])
@@ -587,7 +587,7 @@ def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
             ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
             time.sleep(DELAY_TIME)
             ser.write(b'Y')                                  # set secondary mux to col/SHIELD mode
-            time.sleep(DELAY_TIME)            
+            time.sleep(DELAY_TIME)
             ser.write(b'L')                                  # set mode to column write mode
             time.sleep(DELAY_TIME)
             ser.write(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
@@ -640,7 +640,7 @@ if (not skip_cont_tests):
     response = "test"
     if hasShorts:
         print("This array doesn't have pants... it has shorts!")
-        response = input("Type 'test' and 'enter' to continue, or hit 'enter' to quit: ")
+        response = input("Type 'test' and 'enter' to continue with cap check, or hit 'enter' to quit: ")
     if (response.lower() == "test"):
         print("Running cap and TFT continuity tests...")
         test_selection_raw = input("\nPlease hit 'enter' for default cap test 1nF range, or type '1' to " +
@@ -653,7 +653,7 @@ if (not skip_cont_tests):
             meas_range_input = '1e-9'
             print("Running cap test with default 1nF range...\n")
         test_cap_col_to_pzbias(dut_name_input, meas_range_input)
-        test_cap_col_to_shield(dut_name_input, meas_range_input)
+        #test_cap_col_to_shield(dut_name_input, meas_range_input)
         test_cont_col_to_pzbias_tfts_on()
     else:
         print("Exiting program now...")
@@ -669,5 +669,5 @@ else:
         meas_range_input = '1e-9'
         print("Running cap test with default 1nF range...\n")
     test_cap_col_to_pzbias(dut_name_input, meas_range_input)
-    test_cap_col_to_shield(dut_name_input, meas_range_input)
+    # test_cap_col_to_shield(dut_name_input, meas_range_input)
     test_cont_col_to_pzbias_tfts_on()
