@@ -137,8 +137,18 @@ print("\nSetup Instructions:\n" +
       "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
       "- Ensure power supply is ON\n" +
       "\nIf there are shorts, the terminal output (.) means open and (X) means short")
-
-dut_name_input = input("\nPlease enter the name/variant of this board: ")
+dut_name_input = ""
+while True:
+    try:
+        dut_name_input = input("Please enter the name/variant of this board: ")
+    except ValueError:
+        print("Sorry, board name/variant cannot be blank\n")
+        continue
+    if (len(dut_name_input) < 1):
+        print("Sorry, board name/variant cannot be blank\n")
+        continue
+    else:
+        break
 
 test_selection_raw = input("\nPlease hit 'enter' for default test, or type '1' to " +
                            "skip continuity checks and only run cap and TFT continuity tests: ")
