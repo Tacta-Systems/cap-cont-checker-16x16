@@ -81,8 +81,9 @@ the reason we're using these names is because we're limited to one character + c
 - 'W' for writing secondary board to "col/PZBIAS" output
 - 'X' for writing secondary board to "row/SHIELD" output
 - 'Y' for writing secondary board to "col/SHIELD" output
-- 'N' for writing secondary board to "rst/PZBIAS" output
-- 'Q' for writing secondary board to "rst/SHIELD" output
+- 'M' for writing secondary board to "rst/PZBIAS" output
+- 'N' for writing secondary board to "rst/SHIELD" output
+- 'Q' for writing secondary board to "rst/col" output
 */
 bool hasPrinted = false;
 
@@ -98,7 +99,7 @@ void loop() {
     digitalWrite(N_ROW_DEC_EN, HIGH);
     digitalWrite(ROW_MUX_EN, HIGH);
     digitalWrite(COL_MUX_EN, HIGH);
-    digitalWrite(RST_MUX_EN, LOW);
+    digitalWrite(RST_MUX_EN, HIGH);
     if (!hasPrinted) {
       hasPrinted = true;
     }
@@ -221,8 +222,8 @@ void loop() {
       hasPrinted = true;
     }
   }
-  else if (cmd == 'N') { // set secondary board to "rst/PZBIAS" mode
-    state = 'Q';
+  else if (cmd == 'M') { // set secondary board to "rst/PZBIAS" mode
+    state = 'M';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
     digitalWrite(AUTO_COL_MUX_EN, HIGH);    
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
@@ -233,14 +234,26 @@ void loop() {
       hasPrinted = true;
     }
   }
-  else if (cmd == 'Q') { // set secondary board to "rst/SHIELD" mode
-    state = 'Q';
+  else if (cmd == 'N') { // set secondary board to "rst/SHIELD" mode
+    state = 'N';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
     digitalWrite(AUTO_COL_MUX_EN, HIGH);    
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(2);
     setSecondaryColMux(2);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == 'Q') { // set secondary board to "rst/column" mode
+    state = 'N';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(2);
+    setSecondaryColMux(0);
     if (!hasPrinted) {
       hasPrinted = true;
     }

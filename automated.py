@@ -140,7 +140,7 @@ print("\nSetup Instructions:\n" +
 loop_one_res = 0
 while True:
     try:
-        loop_one_res = int(input("Please enter the resistance between Loopback 1A/1B: "))
+        loop_one_res = float(input("Please enter the resistance (ohms) between Loopback 1A/1B: "))
     except ValueError:
         print("Sorry, please enter a numerical value")
         continue
@@ -150,7 +150,7 @@ while True:
 loop_two_res = 0
 while True:
     try:
-        loop_two_res = int(input("Please enter the resistance between Loopback 2A/2B: "))
+        loop_two_res = float(input("Please enter the resistance (ohms) between Loopback 2A/2B: "))
     except ValueError:
         print("Sorry, please enter a numerical value")
         continue
@@ -209,6 +209,9 @@ the reason we're using these names is because we're limited to one character + c
 - 'W' for writing secondary board to "col/PZBIAS" output
 - 'X' for writing secondary board to "row/SHIELD" output
 - 'Y' for writing secondary board to "col/SHIELD" output
+- 'M' for writing secondary board to "rst/PZBIAS" output
+- 'N' for writing secondary board to "rst/SHIELD" output
+- 'Q' for writing secondary board to "rst/col" output
 '''
 
 # TODO? implement string output of cap check as a returned value in the tuple
@@ -285,7 +288,7 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
     out_array_on = np.delete(out_array_on, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_on.csv", out_array_on, delimiter=",", fmt="%s")
     print("")
-    return (0, "Ran cap col to PZBIAS test w/ " + str(meas_range) + " F range\n")
+    return(0, "Ran cap col to PZBIAS test w/ " + str(meas_range) + " F range\n")
  
 # TODO? implement string output of cap check as a returned value in the tuple
 def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
@@ -361,9 +364,9 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_on.csv", out_array_on, delimiter=",", fmt="%s")
     print("")
-    return (0, "Ran cap col to SHIELD test w/ " + str(meas_range) + " F range\n")
+    return(0, "Ran cap col to SHIELD test w/ " + str(meas_range) + " F range\n")
 
-def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_row=16, end_col=16):
+def test_cont_row_to_column(dut_name=dut_name_input, start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CONT_ROW_TO_COL"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -391,6 +394,7 @@ def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_
             for col in range(start_col, end_col):
                 time.sleep(DELAY_TIME)
                 ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
+                time.sleep(DELAY_TIME)
                 ser.write(b'U')                                  # set secondary mux to row/col mode
                 time.sleep(DELAY_TIME)
                 ser.write(b'R')                                  # set mode to row write mode
@@ -431,7 +435,7 @@ def test_cont_row_to_col(dut_name=dut_name_input, start_row=0, start_col=0, end_
             print("")
             out_text += "\n"
     print("")
-    return (num_shorts, out_text)
+    return(num_shorts, out_text)
 
 def test_cont_row_to_pzbias(dut_name=dut_name_input, start_row=0, end_row=16):
     test_name = "CONT_ROW_TO_PZBIAS"
@@ -477,7 +481,7 @@ def test_cont_row_to_pzbias(dut_name=dut_name_input, start_row=0, end_row=16):
         print(summary_text)
         out_text += summary_text + "\n"
     print("")
-    return (num_shorts, out_text)
+    return(num_shorts, out_text)
 
 def test_cont_col_to_pzbias(dut_name=dut_name_input, start_col=0, end_col=16):
     test_name = "CONT_COL_TO_PZBIAS"
@@ -523,7 +527,7 @@ def test_cont_col_to_pzbias(dut_name=dut_name_input, start_col=0, end_col=16):
         print(summary_text)
         out_text += summary_text + "\n"
     print("")
-    return (num_shorts, out_text)
+    return(num_shorts, out_text)
 
 # TODO: implement tuple output of (arrayID, text output)
 def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_row=16, start_col=0, end_col=16):
@@ -594,7 +598,7 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
             print("")
             out_text += "\n"
     print("")
-    return (num_shorts, out_text)
+    return(num_shorts, out_text)
 
 def test_cont_row_to_shield(dut_name=dut_name_input, start_row=0, end_row=16):
     test_name = "CONT_ROW_TO_SHIELD"
@@ -640,7 +644,7 @@ def test_cont_row_to_shield(dut_name=dut_name_input, start_row=0, end_row=16):
         print(summary_text)
         out_text += summary_text + "\n"
     print("")
-    return (num_shorts, out_text)
+    return(num_shorts, out_text)
 
 def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
     test_name = "CONT_COL_TO_SHIELD"
@@ -686,7 +690,7 @@ def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
         print(summary_text)
         out_text += summary_text + "\n"
     print("")
-    return (num_shorts, out_text)
+    return(num_shorts, out_text)
 
 def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
     printProgressBar(0, 16, suffix = "Reset 0/16", length = 16)
@@ -704,7 +708,171 @@ def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
         time.sleep(DELAY_TIME)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
-    return (0, "")
+    return(0, "")
+
+def test_cont_rst_to_column(dut_name=dut_name_input, start_rst=0, start_col=0, end_rst = 16, end_col = 16):
+    test_name = "CONT_RST_TO_COL"
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
+    out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
+    for i in range(len(out_array)):
+        out_array[len(out_array)-1-i][0] = "Rst" + str(i+1)# set rows of output array to be "R1"..."R16"
+    # out_array[0][0] = "Continuity Detection Row to Column"
+    # out_array[0][1] = dut_name
+    # out_array[0][2] = dt.datetime.now()
+    out_array[1][0] = "Resistance (ohm)"
+    num_shorts = 0
+    out_text = ""
+    inst.query('meas:res?')
+    time.sleep(DELAY_TIME)
+    out_text += "3T Sensor Rst to Col Continuity Detection Running..."
+    print(out_text)
+    out_text += "\n"
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Rst Index", "Column Index", "Rst Res. to Col. (ohm)"])
+        printProgressBar(0, 16, suffix = "Rst 0/16", length = 16)
+        time.sleep(DELAY_TIME)
+        for rst in range(start_rst, end_rst):
+            for col in range(start_col, end_col):
+                time.sleep(DELAY_TIME)
+                ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+                time.sleep(DELAY_TIME)
+                ser.write(b'Q')                                  # set secondary mux to row/col mode
+                time.sleep(DELAY_TIME)
+                ser.write(b'T')                                  # set mode to rst write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(rst)[2:], 'utf-8'))          # write rst index
+                time.sleep(DELAY_TIME)
+                ser.write(b'L')                                  # set mode to column write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(col)[2:], 'utf-8'))          # write column index
+                time.sleep(DELAY_TIME)
+                ser.write(b'O')                                  # set mode to continuity check
+                time.sleep(DELAY_TIME)
+                val = float(inst.query('meas:res?'))             # read resistance measurement
+                out_array[(16-rst)+1][col+1] = val
+                time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
+                if (val < RES_SHORT_THRESHOLD_ROWCOL):
+                    num_shorts += 1
+                writer.writerow([str(rst+1), str(col+1), val])
+            printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
+    out_array = np.delete(out_array, (0), axis=0)
+    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
+    num_shorts_text = "There were " + str(num_shorts) + " rst/col short(s) in array " + dut_name
+    print(num_shorts_text)
+    out_text += num_shorts_text + "\n"
+    out_array = np.delete(out_array, (0), axis=1)
+    out_array = out_array[1:]
+    if (num_shorts > 0):
+        for rst in range(out_array.shape[0]):
+            for col in range(out_array.shape[1]):
+                if (float(out_array[rst][col]) > RES_SHORT_THRESHOLD_ROWCOL):
+                    print(".", end="")
+                    out_text += "."
+                else:
+                    print("X", end="")
+                    out_text += "X"
+            print("")
+            out_text += "\n"
+    print("")
+    return(num_shorts, out_text)
+
+def test_cont_rst_to_pzbias(dut_name=dut_name_input, start_rst=0, end_rst=16):
+    test_name = "CONT_RST_TO_PZBIAS"
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    num_shorts = 0
+    summary_text = ""
+    out_text = ""
+    inst.query('meas:res?')                              # set Keithley mode to resistance measurement
+    time.sleep(DELAY_TIME)
+    out_text += "Sensor Rst to PZBIAS Continuity Detection Running..."
+    print(out_text)
+    out_text += "\n"
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Rst Index", "Rst Res. to PZBIAS (ohm)"])
+        printProgressBar(0, 16, suffix = "Rst 0/16", length = 16)
+        for rst in range(start_rst, end_rst):
+            ser.write(b'Z')                                     # set rst switches to high-Z and disable muxes
+            time.sleep(DELAY_TIME)
+            ser.write(b'M')                                     # set secondary mux to rst/PZBIAS mode
+            time.sleep(DELAY_TIME)
+            ser.write(b'T')                                     # set mode to rst write mode
+            time.sleep(DELAY_TIME)
+            ser.write(bytes(hex(rst)[2:], 'utf-8'))             # write the rst address to the tester
+            time.sleep(DELAY_TIME)
+            ser.write(b'O')                                     # set mode to continuity check mode
+            time.sleep(DELAY_TIME)
+            val = float(inst.query('meas:res?'))                # read resistance from the meter
+            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            writer.writerow([str(rst+1), val])                  # write value to CSV
+            if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+                num_shorts += 1
+                summary_text += "X"
+            else:
+                summary_text += "."
+            printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+    ser.write(b'Z')                                           # set all mux enables + mux channels to OFF
+    num_shorts_text = "There were " + str(num_shorts) + " rst/PZBIAS short(s) in array " + dut_name
+    print(num_shorts_text)
+    out_text += num_shorts_text + "\n"
+    if (num_shorts > 0):
+        print(summary_text)
+        out_text += summary_text + "\n"
+    print("")
+    return(num_shorts, out_text)
+
+def test_cont_rst_to_shield(dut_name=dut_name_input, start_rst=0, end_rst=16):
+    test_name = "CONT_RST_TO_SHIELD"
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    num_shorts = 0
+    summary_text = ""
+    out_text = ""
+    inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
+    time.sleep(DELAY_TIME)
+    out_text += "Sensor Rst to SHIELD Continuity Detection Running..."
+    print(out_text)
+    out_text += "\n"
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Rst Index", "Rst Res. to SHIELD (ohm)"])
+        printProgressBar(0, 16, suffix = "Rst 0/16", length = 16)
+        for rst in range(start_rst, end_rst):
+            ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+            time.sleep(DELAY_TIME)
+            ser.write(b'N')                                  # set secondary mux to rst/SHIELD mode
+            time.sleep(DELAY_TIME)
+            ser.write(b'T')                                  # set mode to rst write mode
+            time.sleep(DELAY_TIME)
+            ser.write(bytes(hex(rst)[2:], 'utf-8'))          # write the rst address to the tester
+            time.sleep(DELAY_TIME)
+            ser.write(b'O')                                  # set mode to continuity check mode
+            time.sleep(DELAY_TIME)
+            val = float(inst.query('meas:res?'))             # read resistance from the meter
+            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            writer.writerow([str(rst+1), val])               # write value to CSV
+            if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+                num_shorts += 1
+                summary_text += "X"
+            else:
+                summary_text += "."
+            printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+    ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
+    num_shorts_text = "There were " + str(num_shorts) + " rst/SHIELD short(s) in array " + dut_name
+    print(num_shorts_text)
+    out_text += num_shorts_text + "\n"
+    if (num_shorts > 0):
+        print(summary_text)
+        out_text += summary_text + "\n"
+    print("")
+    return(num_shorts, out_text)
+
 
 array_types = [1, 3]
 array_type = 1
@@ -719,76 +887,33 @@ while True:
         continue
     else:
         break
-
-
-print("\nIf there are shorts, the terminal output (.) means open and (X) means short")
+print("Running " + str(array_type) + "T array tests...")
+print("\nIf there are shorts, the terminal output (.) means open and (X) means short\n")
 
 datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
-              "\nIf there are shorts, the output (.) means open and (X) means short\n\n")
-out_string += "Loopback 1A/1B resistance: " + str(loop_one_res)
-out_string += "Loopback 2A/2B resistance: " + str(loop_two_res)
+              "\nIf there are shorts, the output (.) means open and (X) means short\n" +
+              "Array Type: " + str(array_type) + "T\n\n")
+out_string += "Loopback 1A/1B resistance: " + str(loop_one_res) + " ohms\n"
+out_string += "Loopback 2A/2B resistance: " + str(loop_two_res) + " ohms\n\n"
 
-special_test_state = 0
-test_selection_raw = input("\nPlease hit 'enter' for default test, or\n" +
-                           "type '1' to skip continuity checks and only run cap + TFT cont. tests, or\n" +
-                           "type '2' to only run continuity tests: ")
-if (test_selection_raw == "1"):
-    special_test_state = 1
-    print("Running only cap and TFT ON tests...\n")
-elif (test_selection_raw == "2"):
-    special_test_state = 2
-    print("Running only continuity tests...\n")
-else:
-    print("Running all tests...\n")
 
-if (special_test_state == 1): # only run capacitance and TFT ON tests
-    test_selection_raw = input("Please hit 'enter' for default cap test 1nF range, or type '1' to " +
-                               "run capacitance test with 10nF range: ")
-    meas_range_input = '1e-9'
+if (array_type == 1):
+    special_test_state = 0
+    test_selection_raw = input("\nPlease hit 'enter' for default 1T test, or\n" +
+                               "type '1' to skip continuity checks and only run cap + TFT cont. tests, or\n" +
+                               "type '2' to only run continuity tests: ")
     if (test_selection_raw == "1"):
-        meas_range_input = '1e-8'
-        print("Running cap test with new 10nF range...\n")
+        special_test_state = 1
+        print("Running only cap and TFT ON tests...\n")
+    elif (test_selection_raw == "2"):
+        special_test_state = 2
+        print("Running only continuity tests...\n")
     else:
-        meas_range_input = '1e-9'
-        print("Running cap test with default 1nF range...\n")
-    out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
-    # test_cap_col_to_shield(dut_name_input, meas_range_input)
-    out_string += test_cont_col_to_pzbias_tfts_on()[1]
-elif (special_test_state == 2):
-    cont_row_to_column = test_cont_row_to_col()
-    cont_row_to_pzbias = test_cont_row_to_pzbias()
-    cont_col_to_pzbias = test_cont_col_to_pzbias()
-    cont_row_to_shield = test_cont_row_to_shield()
-    cont_col_to_shield = test_cont_col_to_shield()
+        print("Running all tests...\n")
 
-    out_string += cont_row_to_column[1] + "\n"
-    out_string += cont_row_to_pzbias[1] + "\n"
-    out_string += cont_col_to_pzbias[1] + "\n"
-    out_string += cont_row_to_shield[1] + "\n"
-    out_string += cont_col_to_shield[1]
-else:
-    # these are tuples of (num shorts, output string)
-    cont_row_to_column = test_cont_row_to_col()
-    cont_row_to_pzbias = test_cont_row_to_pzbias()
-    cont_col_to_pzbias = test_cont_col_to_pzbias()
-    cont_row_to_shield = test_cont_row_to_shield()
-    cont_col_to_shield = test_cont_col_to_shield()
-
-    out_string += cont_row_to_column[1] + "\n"
-    out_string += cont_row_to_pzbias[1] + "\n"
-    out_string += cont_col_to_pzbias[1] + "\n"
-    out_string += cont_row_to_shield[1] + "\n"
-    out_string += cont_col_to_shield[1]
-
-    hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0
-    response = "test"
-    if hasShorts:
-        print("This array doesn't have pants... it has shorts!")
-        response = input("Type 'test' and 'enter' to continue with cap check, or hit 'enter' to quit: ")
-    if (response.lower() == "test"):
-        print("Running cap and TFT continuity tests...")
-        test_selection_raw = input("\nPlease hit 'enter' for default cap test 1nF range, or type '1' to " +
+    if (special_test_state == 1): # only run capacitance and TFT ON tests
+        test_selection_raw = input("Please hit 'enter' for default cap test 1nF range, or type '1' to " +
                                    "run capacitance test with 10nF range: ")
         meas_range_input = '1e-9'
         if (test_selection_raw == "1"):
@@ -798,13 +923,80 @@ else:
             meas_range_input = '1e-9'
             print("Running cap test with default 1nF range...\n")
         out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
-        #test_cap_col_to_shield(dut_name_input, meas_range_input)
+        # test_cap_col_to_shield(dut_name_input, meas_range_input)
         out_string += test_cont_col_to_pzbias_tfts_on()[1]
+    elif (special_test_state == 2):
+        cont_row_to_column = test_cont_row_to_column()
+        cont_row_to_pzbias = test_cont_row_to_pzbias()
+        cont_col_to_pzbias = test_cont_col_to_pzbias()
+        cont_row_to_shield = test_cont_row_to_shield()
+        cont_col_to_shield = test_cont_col_to_shield()
+
+        out_string += cont_row_to_column[1] + "\n"
+        out_string += cont_row_to_pzbias[1] + "\n"
+        out_string += cont_col_to_pzbias[1] + "\n"
+        out_string += cont_row_to_shield[1] + "\n"
+        out_string += cont_col_to_shield[1]
     else:
-        with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
-            file.write(out_string)
-        print("Exiting program now...")
-        sys.exit(0)
+        # these are tuples of (num shorts, output string)
+        cont_row_to_column = test_cont_row_to_column()
+        cont_row_to_pzbias = test_cont_row_to_pzbias()
+        cont_col_to_pzbias = test_cont_col_to_pzbias()
+        cont_row_to_shield = test_cont_row_to_shield()
+        cont_col_to_shield = test_cont_col_to_shield()
+
+        out_string += cont_row_to_column[1] + "\n"
+        out_string += cont_row_to_pzbias[1] + "\n"
+        out_string += cont_col_to_pzbias[1] + "\n"
+        out_string += cont_row_to_shield[1] + "\n"
+        out_string += cont_col_to_shield[1]
+
+        hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0
+        response = "test"
+        if hasShorts:
+            print("This array doesn't have pants... it has shorts!")
+            response = input("Type 'test' and 'enter' to continue with cap check, or hit 'enter' to quit: ")
+        if (response.lower() == "test"):
+            print("Running cap and TFT continuity tests...")
+            test_selection_raw = input("\nPlease hit 'enter' for default cap test 1nF range, or type '1' to " +
+                                       "run capacitance test with 10nF range: ")
+            meas_range_input = '1e-9'
+            if (test_selection_raw == "1"):
+                meas_range_input = '1e-8'
+                print("Running cap test with new 10nF range...\n")
+            else:
+                meas_range_input = '1e-9'
+                print("Running cap test with default 1nF range...\n")
+            out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
+            #test_cap_col_to_shield(dut_name_input, meas_range_input)
+            out_string += test_cont_col_to_pzbias_tfts_on()[1]
+        else:
+            with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
+                file.write(out_string)
+            print("Exiting program now...")
+            sys.exit(0)
+elif (array_type == 3):
+    
+    cont_row_to_column = test_cont_row_to_column()
+    cont_row_to_pzbias = test_cont_row_to_pzbias()
+    cont_col_to_pzbias = test_cont_col_to_pzbias()
+    cont_row_to_shield = test_cont_row_to_shield()
+    cont_col_to_shield = test_cont_col_to_shield()
+
+    cont_rst_to_column = test_cont_rst_to_column()
+    cont_rst_to_pzbias = test_cont_rst_to_pzbias()
+    cont_rst_to_shield = test_cont_rst_to_shield()
+
+    out_string += cont_row_to_column[1] + "\n"
+    out_string += cont_row_to_pzbias[1] + "\n"
+    out_string += cont_col_to_pzbias[1] + "\n"
+    out_string += cont_row_to_shield[1] + "\n"
+    out_string += cont_col_to_shield[1] + "\n"
+    out_string += cont_rst_to_column[1] + "\n"
+    out_string += cont_rst_to_pzbias[1] + "\n"
+    out_string += cont_rst_to_shield[1]
+else:
+    pass
 
 with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
     file.write(out_string)
