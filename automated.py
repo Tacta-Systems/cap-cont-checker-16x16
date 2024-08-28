@@ -980,7 +980,6 @@ if (array_type == 1):
 
 # 3T array testing
 elif (array_type == 3):
-    '''
     cont_row_to_column = test_cont_row_to_column()
     cont_row_to_pzbias = test_cont_row_to_pzbias()
     cont_col_to_pzbias = test_cont_col_to_pzbias()
@@ -999,8 +998,6 @@ elif (array_type == 3):
     out_string += cont_rst_to_column[1] + "\n"
     out_string += cont_rst_to_pzbias[1] + "\n"
     out_string += cont_rst_to_shield[1]
-    
-    '''
 else:
     pass
 
