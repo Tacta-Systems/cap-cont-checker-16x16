@@ -699,7 +699,6 @@ def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     return (0, "")
 
-print
 datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
               "\nIf there are shorts, the output (.) means open and (X) means short\n\n")
