@@ -985,7 +985,6 @@ elif (array_type == 3):
     cont_col_to_pzbias = test_cont_col_to_pzbias()
     cont_row_to_shield = test_cont_row_to_shield()
     cont_col_to_shield = test_cont_col_to_shield()
-
     cont_rst_to_column = test_cont_rst_to_column()
     cont_rst_to_pzbias = test_cont_rst_to_pzbias()
     cont_rst_to_shield = test_cont_rst_to_shield()
