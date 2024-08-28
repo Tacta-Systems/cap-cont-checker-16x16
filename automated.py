@@ -150,13 +150,17 @@ while True:
     else:
         break
 
-test_selection_raw = input("\nPlease hit 'enter' for default test, or type '1' to " +
-                           "skip continuity checks and only run cap and TFT continuity tests: ")
+special_test_state = 0
+test_selection_raw = input("\nPlease hit 'enter' for default test, or\n" +
+                           "type '1' to skip continuity checks and only run cap + TFT cont. tests, or\n" +
+                           "type '2' to only run continuity tests: ")
 if (test_selection_raw == "1"):
-    skip_cont_tests = True
-    print("Running only cap and TFT ON tests...")
+    special_test_state = 1
+    print("Running only cap and TFT ON tests...\n")
+elif (test_selection_raw == "2"):
+    special_test_state = 2
+    print("Running only continuity tests...\n")
 else:
-    skip_cont_tests = False
     print("Running all tests...\n")
 
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
@@ -699,7 +703,33 @@ print
 datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
               "\nIf there are shorts, the output (.) means open and (X) means short\n\n")
-if (not skip_cont_tests):
+
+if (special_test_state == 1): # only run capacitance and TFT ON tests
+    test_selection_raw = input("Please hit 'enter' for default cap test 1nF range, or type '1' to " +
+                               "run capacitance test with 10nF range: ")
+    meas_range_input = '1e-9'
+    if (test_selection_raw == "1"):
+        meas_range_input = '1e-8'
+        print("Running cap test with new 10nF range...\n")
+    else:
+        meas_range_input = '1e-9'
+        print("Running cap test with default 1nF range...\n")
+    out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
+    # test_cap_col_to_shield(dut_name_input, meas_range_input)
+    out_string += test_cont_col_to_pzbias_tfts_on()[1]
+elif (special_test_state == 2):
+    cont_row_to_column = test_cont_row_to_col()
+    cont_row_to_pzbias = test_cont_row_to_pzbias()
+    cont_col_to_pzbias = test_cont_col_to_pzbias()
+    cont_row_to_shield = test_cont_row_to_shield()
+    cont_col_to_shield = test_cont_col_to_shield()
+
+    out_string += cont_row_to_column[1] + "\n"
+    out_string += cont_row_to_pzbias[1] + "\n"
+    out_string += cont_col_to_pzbias[1] + "\n"
+    out_string += cont_row_to_shield[1] + "\n"
+    out_string += cont_col_to_shield[1]
+else:
     # these are tuples of (num shorts, output string)
     cont_row_to_column = test_cont_row_to_col()
     cont_row_to_pzbias = test_cont_row_to_pzbias()
@@ -737,19 +767,6 @@ if (not skip_cont_tests):
             file.write(out_string)
         print("Exiting program now...")
         sys.exit(0)
-else:
-    test_selection_raw = input("Please hit 'enter' for default cap test 1nF range, or type '1' to " +
-                               "run capacitance test with 10nF range: ")
-    meas_range_input = '1e-9'
-    if (test_selection_raw == "1"):
-        meas_range_input = '1e-8'
-        print("Running cap test with new 10nF range...\n")
-    else:
-        meas_range_input = '1e-9'
-        print("Running cap test with default 1nF range...\n")
-    out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
-    # test_cap_col_to_shield(dut_name_input, meas_range_input)
-    out_string = test_cont_col_to_pzbias_tfts_on()[1]
 
 with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
     file.write(out_string)
