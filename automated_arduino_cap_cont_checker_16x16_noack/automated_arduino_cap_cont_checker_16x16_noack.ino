@@ -81,6 +81,8 @@ the reason we're using these names is because we're limited to one character + c
 - 'W' for writing secondary board to "col/PZBIAS" output
 - 'X' for writing secondary board to "row/SHIELD" output
 - 'Y' for writing secondary board to "col/SHIELD" output
+- 'N' for writing secondary board to "rst/PZBIAS" output
+- 'Q' for writing secondary board to "rst/SHIELD" output
 */
 bool hasPrinted = false;
 
@@ -219,6 +221,31 @@ void loop() {
       hasPrinted = true;
     }
   }
+  else if (cmd == 'N') { // set secondary board to "rst/PZBIAS" mode
+    state = 'Q';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(2);
+    setSecondaryColMux(1);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == 'Q') { // set secondary board to "rst/SHIELD" mode
+    state = 'Q';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(2);
+    setSecondaryColMux(2);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  
   else if (isHexadecimalDigit(cmd)) { // characters 0-F drive indices 0-15 of whichever column's selected
     char cmds[1];
     cmds[0] = cmd;
