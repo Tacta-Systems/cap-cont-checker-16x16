@@ -135,21 +135,42 @@ print("\nSetup Instructions:\n" +
       "- If new array, probe loopbacks to ensure connection\n" +
       "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
       "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
-      "- Ensure power supply is ON\n" +
-      "\nIf there are shorts, the terminal output (.) means open and (X) means short")
+      "- Ensure power supply is ON\n")
+
+loop_one_res = 0
+while True:
+    try:
+        loop_one_res = int(input("Please enter the resistance between Loopback 1A/1B: "))
+    except ValueError:
+        print("Sorry, please enter a numerical value")
+        continue
+    else:
+        break
+
+loop_two_res = 0
+while True:
+    try:
+        loop_two_res = int(input("Please enter the resistance between Loopback 2A/2B: "))
+    except ValueError:
+        print("Sorry, please enter a numerical value")
+        continue
+    else:
+        break
+print("")
 dut_name_input = ""
 while True:
     try:
         dut_name_input = input("Please enter the name/variant of this board: ")
     except ValueError:
-        print("Sorry, board name/variant cannot be blank\n")
+        print("Sorry, board name/variant can't be blank")
         continue
     if (len(dut_name_input) < 1):
-        print("Sorry, board name/variant cannot be blank\n")
+        print("Sorry, board name/variant can't be blank")
         continue
     else:
         break
 
+print("\nIf there are shorts, the terminal output (.) means open and (X) means short")
 
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     """
@@ -687,10 +708,12 @@ def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     return (0, "")
 
+
 datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
               "\nIf there are shorts, the output (.) means open and (X) means short\n\n")
-
+out_string += "Loopback 1A/1B resistance: " + str(loop_one_res)
+out_string += "Loopback 2A/2B resistance: " + str(loop_two_res)
 
 special_test_state = 0
 test_selection_raw = input("\nPlease hit 'enter' for default test, or\n" +
