@@ -150,18 +150,6 @@ while True:
     else:
         break
 
-special_test_state = 0
-test_selection_raw = input("\nPlease hit 'enter' for default test, or\n" +
-                           "type '1' to skip continuity checks and only run cap + TFT cont. tests, or\n" +
-                           "type '2' to only run continuity tests: ")
-if (test_selection_raw == "1"):
-    special_test_state = 1
-    print("Running only cap and TFT ON tests...\n")
-elif (test_selection_raw == "2"):
-    special_test_state = 2
-    print("Running only continuity tests...\n")
-else:
-    print("Running all tests...\n")
 
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     """
@@ -702,6 +690,20 @@ def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
 datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
               "\nIf there are shorts, the output (.) means open and (X) means short\n\n")
+
+
+special_test_state = 0
+test_selection_raw = input("\nPlease hit 'enter' for default test, or\n" +
+                           "type '1' to skip continuity checks and only run cap + TFT cont. tests, or\n" +
+                           "type '2' to only run continuity tests: ")
+if (test_selection_raw == "1"):
+    special_test_state = 1
+    print("Running only cap and TFT ON tests...\n")
+elif (test_selection_raw == "2"):
+    special_test_state = 2
+    print("Running only continuity tests...\n")
+else:
+    print("Running all tests...\n")
 
 if (special_test_state == 1): # only run capacitance and TFT ON tests
     test_selection_raw = input("Please hit 'enter' for default cap test 1nF range, or type '1' to " +
