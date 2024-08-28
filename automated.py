@@ -726,7 +726,7 @@ def test_cont_rst_to_column(dut_name=dut_name_input, start_rst=0, start_col=0, e
     out_text = ""
     inst.query('meas:res?')
     time.sleep(DELAY_TIME)
-    out_text += "3T Sensor Rst to Col Continuity Detection Running..."
+    out_text += "Sensor Rst to Col Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
@@ -890,10 +890,8 @@ while True:
 print("Running " + str(array_type) + "T array tests...")
 print("\nIf there are shorts, the terminal output (.) means open and (X) means short\n")
 
-datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
-              "\nIf there are shorts, the output (.) means open and (X) means short\n" +
-              "Array Type: " + str(array_type) + "T\n\n")
+
+out_string = ""
 out_string += "Loopback 1A/1B resistance: " + str(loop_one_res) + " ohms\n"
 out_string += "Loopback 2A/2B resistance: " + str(loop_two_res) + " ohms\n\n"
 
@@ -971,12 +969,18 @@ if (array_type == 1):
             #test_cap_col_to_shield(dut_name_input, meas_range_input)
             out_string += test_cont_col_to_pzbias_tfts_on()[1]
         else:
-            with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
+            datetime_now = dt.datetime.now()
+            out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_name_input + "\n" + 
+                         "Array Type: " + str(array_type) + "T\n" +
+                         "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
+            with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
                 file.write(out_string)
             print("Exiting program now...")
             sys.exit(0)
+
+# 3T array testing
 elif (array_type == 3):
-    
+    '''
     cont_row_to_column = test_cont_row_to_column()
     cont_row_to_pzbias = test_cont_row_to_pzbias()
     cont_col_to_pzbias = test_cont_col_to_pzbias()
@@ -995,8 +999,14 @@ elif (array_type == 3):
     out_string += cont_rst_to_column[1] + "\n"
     out_string += cont_rst_to_pzbias[1] + "\n"
     out_string += cont_rst_to_shield[1]
+    
+    '''
 else:
     pass
 
-with open(path + datetime_now + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
+datetime_now = dt.datetime.now()
+out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_name_input + "\n" + 
+             "Array Type: " + str(array_type) + "T\n" + 
+             "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
+with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
     file.write(out_string)
