@@ -170,8 +170,6 @@ while True:
     else:
         break
 
-print("\nIf there are shorts, the terminal output (.) means open and (X) means short")
-
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     """
     Call in a loop to create terminal progress bar
@@ -708,6 +706,22 @@ def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     return (0, "")
 
+array_types = [1, 3]
+array_type = 1
+while True:
+    try:
+        array_type = int(input("Please select array type: '1' for 1T, '3' for 3T: "))
+    except ValueError:
+        print("Sorry, please select a valid array type")
+        continue
+    if (array_type not in array_types):
+        print("Sorry, please select a valid array type")
+        continue
+    else:
+        break
+
+
+print("\nIf there are shorts, the terminal output (.) means open and (X) means short")
 
 datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 out_string = ("ArrayID: " + dut_name_input + "\n" + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') +
