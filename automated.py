@@ -898,7 +898,7 @@ out_string += "Loopback 2A/2B resistance: " + str(loop_two_res) + " ohms\n\n"
 
 if (array_type == 1):
     special_test_state = 0
-    test_selection_raw = input("\nPlease hit 'enter' for default 1T test, or\n" +
+    test_selection_raw = input("Please hit 'enter' for default (full) 1T test, or\n" +
                                "type '1' to skip continuity checks and only run cap + TFT cont. tests, or\n" +
                                "type '2' to only run continuity tests: ")
     if (test_selection_raw == "1"):
