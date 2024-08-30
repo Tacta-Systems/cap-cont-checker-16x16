@@ -197,7 +197,7 @@ if (os.path.exists(path + dut_id_input)):
 else:
     os.makedirs(path + "\\" + dut_id_input)
     path += dut_id_input + "\\"
-    print("Making new directory at " + path)    
+    print("Making new directory...")    
 
 dut_stage_input = ""
 if (array_type == "Sensor Modules"):
@@ -967,7 +967,7 @@ if (array_type == 1):
         else:
             meas_range_input = '1e-9'
             print("Running cap test with default 1nF range...\n")
-        out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
+        out_string += "\n" + test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
         # test_cap_col_to_shield(dut_name_input, meas_range_input)
         out_string += test_cont_col_to_pzbias_tfts_on()[1]
     elif (special_test_state == 2):
@@ -1012,7 +1012,7 @@ if (array_type == 1):
             else:
                 meas_range_input = '1e-9'
                 print("Running cap test with default 1nF range...\n")
-            out_string += test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
+            out_string += "\n" + test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
             #test_cap_col_to_shield(dut_name_input, meas_range_input)
             out_string += test_cont_col_to_pzbias_tfts_on()[1]
         else:
