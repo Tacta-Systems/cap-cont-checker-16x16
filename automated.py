@@ -47,7 +47,7 @@ from tkinter import filedialog
 VISA_SERIAL_NUMBER = "04611761"
 
 ser = serial.Serial()
-ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -64,8 +64,7 @@ RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
 
 tkinter.Tk().withdraw()
-#path = "G:\\Shared drives\\Engineering\\Projects\\Testing\\16x16_Array_E_Test\\Phase_1EFG_Array\\" # hardcoded this as default value, below lines (commented) can prompt for the path
-path = "C:\\Users\\tacta\\Desktop\\" # C:\Users\tacta\Desktop
+path = "G:\\Shared drives\\Sensing\\Testing\\" # old value is C:\Users\tacta\Desktop
 # print("Please select the directory to output data to:")
 # path = filedialog.askdirectory()
 
@@ -144,6 +143,8 @@ while True:
     except ValueError:
         print("Sorry, please enter a numerical value")
         continue
+    if (loop_one_res <= 0):
+        print("Sorry, plese enter a value greater than 0")    
     else:
         break
 
@@ -154,21 +155,67 @@ while True:
     except ValueError:
         print("Sorry, please enter a numerical value")
         continue
+    if (loop_two_res <= 0):
+        print("Sorry, plese enter a value greater than 0")
     else:
         break
 print("")
-dut_name_input = ""
+
+array_types = {
+    0: "Backplanes",
+    1: "Sensor Arrays\\16x16",
+    2: "Sensor Modules"
+}
+array_type_raw = 0
 while True:
     try:
-        dut_name_input = input("Please enter the name/variant of this board: ")
+        array_type_raw = int(input("Please enter array type--\n- 0 for backplanes\n- 1 for sensor arrays\n- 2 for sensor modules: "))
     except ValueError:
-        print("Sorry, board name/variant can't be blank")
-        continue
-    if (len(dut_name_input) < 1):
-        print("Sorry, board name/variant can't be blank")
+        print("Sorry, please enter a numerical value")
+    if (array_type_raw not in list(array_types.keys())):
+        print("Sorry, please enter a valid response")
         continue
     else:
         break
+array_type = array_types[array_type_raw]
+path += array_type + "\\"
+
+dut_id_input = ""
+while True:
+    try:
+        dut_id_input = input("Please enter the array ID (e.g. E2408-001-2-E2_T2): ")
+    except ValueError:
+        print("Sorry, array ID can't be blank")
+        continue
+    if (len(dut_id_input) < 1):
+        print("Sorry, array ID can't be blank")
+        continue
+    else:
+        break
+if (os.path.exists(path + dut_id_input)):
+    path += dut_id_input + "\\"
+else:
+    os.makedirs(path + "\\" + dut_id_input)
+    path += dut_id_input + "\\"
+    print("Making new directory at " + path)    
+
+dut_stage_input = ""
+if (array_type == "Sensor Modules"):
+    while True:
+        try:
+            dut_stage_input = "_" + input("\nPlease enter the array stage of assembly (e.g. onglass): ")
+        except ValueError:
+            print("Sorry, array stage of assembly can't be blank")
+            continue
+        if (len(dut_stage_input) < 1):
+            print("Sorry, array stage of assembly can't be blank")
+            continue
+        else:
+            break
+
+
+dut_name_input = dut_id_input + dut_stage_input
+print("Test data for " + dut_id_input + " will save to path " + path + "\n")
 
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
     """
