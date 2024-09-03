@@ -195,9 +195,26 @@ while True:
 if (os.path.exists(path + dut_id_input)):
     path += dut_id_input + "\\"
 else:
-    os.makedirs(path + "\\" + dut_id_input)
-    path += dut_id_input + "\\"
-    print("Making new directory...")    
+    make_new_path = "Y"
+    valid_responses = ["Y", "N"]
+    while True:
+        try:
+            make_new_path = input("Are you sure you want to make a new directory? 'Y' or 'N': ")
+        except ValueError:
+            print("Sorry, please enter 'Y' or 'N'")
+            continue
+        if (make_new_path.upper() not in valid_responses):
+            print("Sorry, please enter 'Y' or 'N'")
+            continue
+        else:
+            if (make_new_path.upper() == "N"):
+                print("Exiting program now...")
+                sys.exit(0)
+            else:
+                print("Making new directory...")
+                os.makedirs(path + "\\" + dut_id_input)
+                path += dut_id_input + "\\"
+            break
 
 dut_stage_input = ""
 if (array_type == "Sensor Modules"):
