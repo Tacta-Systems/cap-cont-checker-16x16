@@ -172,6 +172,7 @@ while True:
         array_type_raw = int(input("Please enter array type--\n- 0 for backplanes\n- 1 for sensor arrays\n- 2 for sensor modules: "))
     except ValueError:
         print("Sorry, please enter a numerical value")
+        continue
     if (array_type_raw not in list(array_types.keys())):
         print("Sorry, please enter a valid response")
         continue
