@@ -938,7 +938,6 @@ def test_cont_rst_to_shield(dut_name=dut_name_input, start_rst=0, end_rst=16):
     print("")
     return(num_shorts, out_text)
 
-
 array_types = [1, 3]
 array_type = 1
 while True:

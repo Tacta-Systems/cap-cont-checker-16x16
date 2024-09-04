@@ -150,7 +150,7 @@ with open(file_one) as f1, open(file_two) as f2:
         num_diffs = 0
         for i in range(len(f1_chunks)):
             if (f1_chunks[i] != f2_chunks[i]):
-                print("Difference detected:\nFile " + filenames[file_one_index] + ":")
+                print("*****Difference detected:*****\nFile " + filenames[file_one_index] + ":")
                 for chunk in f1_chunks[i]:
                     print(chunk, end="")
                 print("")
@@ -164,7 +164,7 @@ with open(file_one) as f1, open(file_two) as f2:
         num_diffs = 0
         for i in range(len(f1_chunks)):
             if (f1_chunks[i] != f2_chunks[i]):
-                print("Difference detected:\nFile " + filenames[file_one_index] + ":")
+                print("*****Difference detected:*****\nFile " + filenames[file_one_index] + ":")
                 for chunk in f1_chunks[i]:
                     print(chunk, end="")
                 print("")                    
@@ -178,7 +178,7 @@ with open(file_one) as f1, open(file_two) as f2:
         num_diffs = 0
         for i in range(len(f2_chunks)):
             if (f1_chunks[i] != f2_chunks[i]):
-                print("Difference detected:\nFile " + filenames[file_one_index] + ":")
+                print("*****Difference detected:*****\nFile " + filenames[file_one_index] + ":")
                 for chunk in f1_chunks[i]:
                     print(chunk, end="")
                 print("")                    
