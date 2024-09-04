@@ -174,7 +174,7 @@ with open(file_one) as f1, open(file_two) as f2:
                 num_diffs += 1
             print("\n")
         print("There were " + str(num_diffs) + " differences detected")
-    elif (len(f1_chunks > len(f2_chunks))):
+    elif (len(f1_chunks) > len(f2_chunks)):
         num_diffs = 0
         for i in range(len(f2_chunks)):
             if (f1_chunks[i] != f2_chunks[i]):
