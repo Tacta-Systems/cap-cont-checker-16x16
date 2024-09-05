@@ -47,7 +47,7 @@ from tkinter import filedialog
 VISA_SERIAL_NUMBER = "04611761"
 
 ser = serial.Serial()
-ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity

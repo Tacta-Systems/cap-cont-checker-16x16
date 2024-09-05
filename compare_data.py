@@ -158,7 +158,7 @@ with open(file_one) as f1, open(file_two) as f2:
                 for chunk in f2_chunks[i]:
                     print(chunk, end="")
                 num_diffs += 1
-                print("****************************************")
+                print("\n****************************************")
         print("\nThere were " + str(num_diffs) + " difference(s) detected")
     elif (len(f1_chunks) < len(f2_chunks)):
         num_diffs = 0
@@ -172,7 +172,7 @@ with open(file_one) as f1, open(file_two) as f2:
                 for chunk in f2_chunks[i]:
                     print(chunk, end="")
                 num_diffs += 1
-                print("****************************************")
+                print("\n****************************************")
         print("\nThere were " + str(num_diffs) + " difference(s) detected")
     elif (len(f1_chunks) > len(f2_chunks)):
         num_diffs = 0
@@ -186,7 +186,7 @@ with open(file_one) as f1, open(file_two) as f2:
                 for chunk in f2_chunks[i]:
                     print(chunk, end="")
                 num_diffs += 1
-                print("****************************************")
+                print("\n****************************************")
         print("\n\nThere were " + str(num_diffs) + " difference(s) detected")
     else:
         print("ERROR: File lengths are mismatched")
