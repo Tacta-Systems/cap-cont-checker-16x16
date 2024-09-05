@@ -1048,7 +1048,7 @@ def test_cont_vdd_to_shield(dut_name=dut_name_input):
         time.sleep(DELAY_TIME)
         val = float(inst.query('meas:res?'))             # read resistance from the meter
         file.write(str(val))
-        out_text += str(val) + " ohms"
+        out_text += f"{val:,}"  + " ohms"
         time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
@@ -1078,7 +1078,7 @@ def test_cont_vrst_to_shield(dut_name=dut_name_input):
         time.sleep(DELAY_TIME)
         val = float(inst.query('meas:res?'))             # read resistance from the meter
         file.write(str(val))
-        out_text += str(val) + " ohms"
+        out_text += f"{val:,}" + " ohms"
         time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
@@ -1108,7 +1108,7 @@ def test_cont_vdd_to_pzbias(dut_name=dut_name_input):
         time.sleep(DELAY_TIME)
         val = float(inst.query('meas:res?'))             # read resistance from the meter
         file.write(str(val))
-        out_text += str(val) + " ohms"
+        out_text += f"{val:,}" + " ohms"
         time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
@@ -1138,7 +1138,7 @@ def test_cont_vrst_to_pzbias(dut_name=dut_name_input):
         time.sleep(DELAY_TIME)
         val = float(inst.query('meas:res?'))             # read resistance from the meter
         file.write(str(val))
-        out_text += str(val) + " ohms"
+        out_text += f"{val:,}" + " ohms"
         time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
         ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
