@@ -84,6 +84,12 @@ the reason we're using these names is because we're limited to one character + c
 - 'M' for writing secondary board to "rst/PZBIAS" output
 - 'N' for writing secondary board to "rst/SHIELD" output
 - 'Q' for writing secondary board to "rst/col" output
+- '!' for writing secondary board to "vdd/col" output
+- '@' for writing secondary board to "vdd/SHIELD" output
+- '#' for writing secondary board to "vdd/PZBIAS" output
+- '$' for writing secondary board to "vrst/col" output
+- '%' for writing secondary board to "vrst/SHIELD" output
+- '^' for writing secondary board to "vrst/PZBIAS" output
 */
 bool hasPrinted = false;
 
@@ -177,7 +183,7 @@ void loop() {
   else if (cmd == 'V') { // set secondary board to "row/PZBIAS" mode
     state = 'V';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
-    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(1);
@@ -189,7 +195,7 @@ void loop() {
   else if (cmd == 'W') { // set secondary board to "col/PZBIAS" mode
     state = 'W';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
-    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(0);
@@ -201,7 +207,7 @@ void loop() {
   else if (cmd == 'X') { // set secondary board to "row/SHIELD" mode
     state = 'X';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
-    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(1);
@@ -213,7 +219,7 @@ void loop() {
   else if (cmd == 'Y') { // set secondary board to "col/SHIELD" mode
     state = 'Y';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
-    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(0);
@@ -225,7 +231,7 @@ void loop() {
   else if (cmd == 'M') { // set secondary board to "rst/PZBIAS" mode
     state = 'M';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
-    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(2);
@@ -237,7 +243,7 @@ void loop() {
   else if (cmd == 'N') { // set secondary board to "rst/SHIELD" mode
     state = 'N';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
-    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(2);
@@ -249,11 +255,83 @@ void loop() {
   else if (cmd == 'Q') { // set secondary board to "rst/column" mode
     state = 'N';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
-    digitalWrite(AUTO_COL_MUX_EN, HIGH);    
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(2);
     setSecondaryColMux(0);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == '!') { // set secondary board to "vdd/column" mode
+    state = '!';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(3);
+    setSecondaryColMux(0);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == '@') { // set secondary board to "vdd/SHIELD" mode
+    state = '@';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(3);
+    setSecondaryColMux(2);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == '#') { // set secondary board to "vdd/PZBIAS" mode
+    state = '#';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(3);
+    setSecondaryColMux(1);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == '$') { // set secondary board to "vrst/column" mode
+    state = '$';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(4);
+    setSecondaryColMux(0);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == '%') { // set secondary board to "vrst/SHIELD" mode
+    state = '%';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(4);
+    setSecondaryColMux(2);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == '^') { // set secondary board to "vrst/PZBIAS" mode
+    state = '^';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(4);
+    setSecondaryColMux(1);
     if (!hasPrinted) {
       hasPrinted = true;
     }
