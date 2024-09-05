@@ -150,7 +150,7 @@ with open(file_one) as f1, open(file_two) as f2:
         num_diffs = 0
         for i in range(len(f1_chunks)):
             if (f1_chunks[i] != f2_chunks[i]):
-                print("\n\n*****Difference detected:*****\nFile " + filenames[file_one_index] + ":")
+                print("\n\n**********Difference detected:**********\nFile " + filenames[file_one_index] + ":")
                 for chunk in f1_chunks[i]:
                     print(chunk, end="")
                 print("")
@@ -158,12 +158,13 @@ with open(file_one) as f1, open(file_two) as f2:
                 for chunk in f2_chunks[i]:
                     print(chunk, end="")
                 num_diffs += 1
+                print("****************************************")
         print("\nThere were " + str(num_diffs) + " difference(s) detected")
     elif (len(f1_chunks) < len(f2_chunks)):
         num_diffs = 0
         for i in range(len(f1_chunks)):
             if (f1_chunks[i] != f2_chunks[i]):
-                print("\n\n*****Difference detected:*****\nFile " + filenames[file_one_index] + ":")
+                print("\n\n**********Difference detected:**********\nFile " + filenames[file_one_index] + ":")
                 for chunk in f1_chunks[i]:
                     print(chunk, end="")
                 print("")
@@ -171,12 +172,13 @@ with open(file_one) as f1, open(file_two) as f2:
                 for chunk in f2_chunks[i]:
                     print(chunk, end="")
                 num_diffs += 1
+                print("****************************************")
         print("\nThere were " + str(num_diffs) + " difference(s) detected")
     elif (len(f1_chunks) > len(f2_chunks)):
         num_diffs = 0
         for i in range(len(f2_chunks)):
             if (f1_chunks[i] != f2_chunks[i]):
-                print("\n\n*****Difference detected:*****\nFile " + filenames[file_one_index] + ":")
+                print("\n\n**********Difference detected:**********\nFile " + filenames[file_one_index] + ":")
                 for chunk in f1_chunks[i]:
                     print(chunk, end="")
                 print("")
@@ -184,6 +186,7 @@ with open(file_one) as f1, open(file_two) as f2:
                 for chunk in f2_chunks[i]:
                     print(chunk, end="")
                 num_diffs += 1
+                print("****************************************")
         print("\n\nThere were " + str(num_diffs) + " difference(s) detected")
     else:
         print("ERROR: File lengths are mismatched")
