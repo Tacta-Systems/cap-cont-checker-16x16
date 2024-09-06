@@ -39,6 +39,7 @@ import os
 import sys
 import csv
 import datetime as dt
+import glob
 import numpy as np
 import pyvisa
 import tkinter
@@ -1290,8 +1291,153 @@ else:
     pass
 
 datetime_now = dt.datetime.now()
+output_filename = path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt"
 out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_name_input + "\n" + 
              "Array Type: " + str(array_type) + "T\n" + 
              "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
-with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
+
+with open(output_filename, 'w', newline='') as file:
     file.write(out_string)
+
+
+# --- begin file compare section ---
+def get_timestamp_raw(file_name):
+    return file_name.split("\\")[-1][:19]
+
+def get_timestamp_truncated(file_name):    
+    return file_name[:19]
+
+def truncate_to_keyword(string, keyword):
+    if keyword in string:
+        index_val = string.index(keyword)
+        return string[:index_val]
+    else:
+        return string
+
+filenames_raw = glob.glob(path + '*summary.txt')
+filenames_raw = list(sorted(filenames_raw, key=get_timestamp_raw))
+filenames = list({x.replace(path, '') for x in filenames_raw})
+filenames = list(sorted(filenames, key=get_timestamp_truncated))
+
+compare_filename = ""
+cmd = input("\nComparing output summary files: Please enter\n" +
+            "- 'Y' to compare data with previous test\n" +
+            "- 'M' to manually compare against a file for this array, or\n" +
+            "- 'enter' to exit... ")
+file_cmp_index = -1
+if (cmd.upper().strip() == 'Y'):
+    file_cmp_index = -2
+    compare_filename = filenames_raw[file_cmp_index]
+elif (cmd.upper().strip() == 'M'):
+    for i in range(len(filenames)-1):
+        print(str(i) + ": " + filenames[i])
+    while True:
+        try:
+            file_cmp_index = int(input("Please select file 1 to compare: "))
+        except ValueError:
+            print("Error: please enter a number between 0 and " + str(len(filenames)-2))
+            continue
+        if (file_cmp_index not in range(0, len(filenames)-1)):
+            print("Error: please enter a number between 0 and " + str(len(filenames)-2))
+            continue
+        else:
+            break
+    compare_filename = filenames_raw[file_cmp_index]
+else:
+    print("Exiting program...")
+    sys.exit(0)
+
+print("\nOriginal file is " + output_filename)
+print("Comparing against filename " + filenames[file_cmp_index])
+with open(output_filename) as f1, open(compare_filename) as f2:
+    f1_list = f1.readlines()
+    f2_list = f2.readlines()
+    f1_chunk_indices = []
+    f2_chunk_indices = []
+    f1_chunk_tuples = []
+    f2_chunk_tuples = []
+    f1_chunks_raw = []
+    f2_chunks_raw = []
+    f1_chunks = []
+    f2_chunks = []
+    for i in range(len(f1_list)):
+        if f1_list[i] in ['\n', '\r\n']:
+            f1_chunk_indices.append(i)
+    for i in range(1, len(f1_chunk_indices)):
+        f1_chunk_tuples.append((f1_chunk_indices[i-1], f1_chunk_indices[i]))
+    for tuple in f1_chunk_tuples:
+        f1_chunks_raw.append(f1_list[tuple[0]:tuple[1]][1:])
+    for chunk in f1_chunks_raw:
+        chunk_output = []
+        for string in chunk:
+            if ("If there are shorts" not in string and "Loopback" not in string):
+                if ("array" in string):
+                    string = truncate_to_keyword(string, "in")
+                chunk_output.append(string)
+        if (len(chunk_output) > 0):
+            f1_chunks.append(chunk_output)
+
+    print("")
+    for i in range(len(f2_list)):
+        if f2_list[i] in ['\n', '\r\n']:
+            f2_chunk_indices.append(i)
+    for i in range(1, len(f2_chunk_indices)):
+        f2_chunk_tuples.append((f2_chunk_indices[i-1], f2_chunk_indices[i]))
+    for tuple in f2_chunk_tuples:
+        f2_chunks_raw.append(f2_list[tuple[0]:tuple[1]][1:])
+    for chunk in f2_chunks_raw:
+        chunk_output = []
+        for string in chunk:
+            if ("If there are shorts" not in string and "Loopback" not in string):
+                if ("array" in string):
+                    string = truncate_to_keyword(string, "in")
+                chunk_output.append(string)
+        if (len(chunk_output) > 0):
+            f2_chunks.append(chunk_output)
+
+    if (len(f1_chunks) == len(f2_chunks)):
+        num_diffs = 0
+        for i in range(len(f1_chunks)):
+            if (f1_chunks[i] != f2_chunks[i]):
+                print("\n\n**********Difference detected:**********\n---File " + filenames[-1] + ":")
+                for chunk in f1_chunks[i]:
+                    print(chunk, end="")
+                print("")
+                print("---File " + filenames[file_cmp_index] + ":")
+                for chunk in f2_chunks[i]:
+                    print(chunk, end="")
+                num_diffs += 1
+                print("\n****************************************")
+        print("\nThere were " + str(num_diffs) + " difference(s) detected")
+    elif (len(f1_chunks) < len(f2_chunks)):
+        print("WARNING: files have different number of tests...")
+        num_diffs = 0
+        for i in range(len(f1_chunks)):
+            if (f1_chunks[i] != f2_chunks[i]):
+                print("\n\n**********Difference detected:**********\n---File " + filenames[-1] + ":")
+                for chunk in f1_chunks[i]:
+                    print(chunk, end="")
+                print("")
+                print("---File " + filenames[file_cmp_index] + ":")
+                for chunk in f2_chunks[i]:
+                    print(chunk, end="")
+                num_diffs += 1
+                print("\n****************************************")
+        print("\nThere were " + str(num_diffs) + " difference(s) detected")
+    elif (len(f1_chunks) > len(f2_chunks)):
+        print("WARNING: files have different number of tests...")
+        num_diffs = 0
+        for i in range(len(f2_chunks)):
+            if (f1_chunks[i] != f2_chunks[i]):
+                print("\n\n**********Difference detected:**********\n---File " + filenames[-1] + ":")
+                for chunk in f1_chunks[i]:
+                    print(chunk, end="")
+                print("")
+                print("---File " + filenames[file_cmp_index] + ":")
+                for chunk in f2_chunks[i]:
+                    print(chunk, end="")
+                num_diffs += 1
+                print("\n****************************************")
+        print("\n\nThere were " + str(num_diffs) + " difference(s) detected")
+    else:
+        print("ERROR: File lengths are mismatched")
