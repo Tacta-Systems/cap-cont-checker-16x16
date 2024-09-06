@@ -1327,6 +1327,7 @@ with open(output_filename, 'w', newline='') as file:
     file.write(out_string)
 
 inst.close()
+psu.close()
 
 # --- begin file compare section ---
 def get_timestamp_raw(file_name):
