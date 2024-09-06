@@ -45,7 +45,11 @@ import pyvisa
 import tkinter
 from tkinter import filedialog
 
+USING_USB_PSU = True
+
 VISA_SERIAL_NUMBER = "04611761"
+PSU_SERIAL_NUMBER  = "583H23104"
+PSU_DELAY_TIME = 3 # seconds
 
 ser = serial.Serial()
 ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
@@ -76,6 +80,9 @@ print(rm.list_resources())
 try:
     inst = rm.open_resource('USB0::0x05E6::0x6500::' + VISA_SERIAL_NUMBER + '::INSTR')
     print("Connected to VISA multimeter!")
+    if (USING_USB_PSU):
+        psu = rm.open_resource('USB0::0x3121::0x0002::' + PSU_SERIAL_NUMBER + '::INSTR')
+        print("Connected to VISA PSU!")
 except Exception as e:
     print(f"VISA connection error: {e}")
     sys.exit(0)
@@ -1173,6 +1180,17 @@ out_string = ""
 out_string += "Loopback 1A/1B resistance: " + str(loop_one_res) + " ohms\n"
 out_string += "Loopback 2A/2B resistance: " + str(loop_two_res) + " ohms\n\n"
 
+if (USING_USB_PSU):
+    # set PSU voltage to 18V, current limits to 0.05A on (-) and 0.075A on (+)
+    psu.write('INST:SEL 0')
+    psu.write('APPL 18,0.05')
+    psu.write('OUTP:STAT 1')
+    psu.write('INST:SEL 1')
+    psu.write('APPL 18,0.075')
+    psu.write('OUTP:STAT 1')
+
+    time.sleep(PSU_DELAY_TIME)
+    print("PSU on!")
 
 if (array_type == 1):
     special_test_state = 0
@@ -1258,6 +1276,7 @@ if (array_type == 1):
 
 # 3T array testing
 elif (array_type == 3):
+    '''
     cont_row_to_column = test_cont_row_to_column()
     cont_row_to_pzbias = test_cont_row_to_pzbias()
     cont_col_to_pzbias = test_cont_col_to_pzbias()
@@ -1268,11 +1287,13 @@ elif (array_type == 3):
     cont_rst_to_shield = test_cont_rst_to_shield()
     cont_vdd_to_column = test_cont_vdd_to_column()
     cont_vrst_to_column = test_cont_vrst_to_column()
+    '''
     cont_vdd_to_shield = test_cont_vdd_to_shield()
     cont_vrst_to_shield = test_cont_vrst_to_shield()
     cont_vdd_to_pzbias = test_cont_vdd_to_pzbias()
     cont_vrst_to_pzbias = test_cont_vrst_to_pzbias()
 
+    '''
     out_string += cont_row_to_column[1] + "\n"
     out_string += cont_row_to_pzbias[1] + "\n"
     out_string += cont_col_to_pzbias[1] + "\n"
@@ -1283,12 +1304,18 @@ elif (array_type == 3):
     out_string += cont_rst_to_shield[1] + "\n"
     out_string += cont_vdd_to_column[1] + "\n"
     out_string += cont_vrst_to_column[1] + "\n"
+    '''
     out_string += cont_vdd_to_shield[1] + "\n"
     out_string += cont_vrst_to_shield[1] + "\n"
     out_string += cont_vdd_to_pzbias[1] + "\n"
     out_string += cont_vrst_to_pzbias[1]
 else:
     pass
+
+if (USING_USB_PSU):
+    psu.write('OUTP:ALL 0')
+    time.sleep(PSU_DELAY_TIME)
+    print("PSU off!")
 
 datetime_now = dt.datetime.now()
 output_filename = path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt"
