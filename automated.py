@@ -1299,6 +1299,7 @@ out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_
 with open(output_filename, 'w', newline='') as file:
     file.write(out_string)
 
+inst.close()
 
 # --- begin file compare section ---
 def get_timestamp_raw(file_name):
