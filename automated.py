@@ -1181,6 +1181,7 @@ out_string += "Loopback 1A/1B resistance: " + str(loop_one_res) + " ohms\n"
 out_string += "Loopback 2A/2B resistance: " + str(loop_two_res) + " ohms\n\n"
 
 if (USING_USB_PSU):
+    print("PSU turning on...")
     # set PSU voltage to 18V, current limits to 0.05A on (-) and 0.075A on (+)
     psu.write('INST:SEL 0')
     psu.write('APPL 18,0.05')
@@ -1190,7 +1191,7 @@ if (USING_USB_PSU):
     psu.write('OUTP:STAT 1')
 
     time.sleep(PSU_DELAY_TIME)
-    print("PSU on!")
+    print("PSU on!\n")
 
 if (array_type == 1):
     special_test_state = 0
@@ -1246,11 +1247,17 @@ if (array_type == 1):
         out_string += cont_col_to_shield[1]
 
         hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0
-        response = "test"
+        response = ""
         if hasShorts:
             print("This array doesn't have pants... it has shorts!")
-            response = input("Type 'test' and 'enter' to continue with cap check, or hit 'enter' to quit: ")
-        if (response.lower() == "test"):
+            response = input("Type 'test' and 'enter' to continue with cap check, or hit 'enter' to skip cap check: ")
+        else:
+            temp = input("Please hit 'enter' to continue with cap tests, or type 'exit' to exit: ")
+            if (len(temp) == 0):
+                response = "test"
+            else:
+                response = ""
+        if (response == "test"):
             print("Running cap and TFT continuity tests...")
             test_selection_raw = input("\nPlease hit 'enter' for default cap test 1nF range, or type '1' to " +
                                        "run capacitance test with 10nF range: ")
@@ -1264,19 +1271,9 @@ if (array_type == 1):
             out_string += "\n" + test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
             #test_cap_col_to_shield(dut_name_input, meas_range_input)
             out_string += test_cont_col_to_pzbias_tfts_on()[1]
-        else:
-            datetime_now = dt.datetime.now()
-            out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_name_input + "\n" + 
-                         "Array Type: " + str(array_type) + "T\n" +
-                         "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
-            with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt", 'w', newline='') as file:
-                file.write(out_string)
-            print("Exiting program now...")
-            sys.exit(0)
 
 # 3T array testing
 elif (array_type == 3):
-    '''
     cont_row_to_column = test_cont_row_to_column()
     cont_row_to_pzbias = test_cont_row_to_pzbias()
     cont_col_to_pzbias = test_cont_col_to_pzbias()
@@ -1287,13 +1284,11 @@ elif (array_type == 3):
     cont_rst_to_shield = test_cont_rst_to_shield()
     cont_vdd_to_column = test_cont_vdd_to_column()
     cont_vrst_to_column = test_cont_vrst_to_column()
-    '''
     cont_vdd_to_shield = test_cont_vdd_to_shield()
     cont_vrst_to_shield = test_cont_vrst_to_shield()
     cont_vdd_to_pzbias = test_cont_vdd_to_pzbias()
     cont_vrst_to_pzbias = test_cont_vrst_to_pzbias()
 
-    '''
     out_string += cont_row_to_column[1] + "\n"
     out_string += cont_row_to_pzbias[1] + "\n"
     out_string += cont_col_to_pzbias[1] + "\n"
@@ -1304,7 +1299,6 @@ elif (array_type == 3):
     out_string += cont_rst_to_shield[1] + "\n"
     out_string += cont_vdd_to_column[1] + "\n"
     out_string += cont_vrst_to_column[1] + "\n"
-    '''
     out_string += cont_vdd_to_shield[1] + "\n"
     out_string += cont_vrst_to_shield[1] + "\n"
     out_string += cont_vdd_to_pzbias[1] + "\n"
@@ -1313,6 +1307,7 @@ else:
     pass
 
 if (USING_USB_PSU):
+    print("\nTurning PSU off...")
     psu.write('OUTP:ALL 0')
     time.sleep(PSU_DELAY_TIME)
     print("PSU off!")
@@ -1348,8 +1343,11 @@ filenames_raw = list(sorted(filenames_raw, key=get_timestamp_raw))
 filenames = list({x.replace(path, '') for x in filenames_raw})
 filenames = list(sorted(filenames, key=get_timestamp_truncated))
 
+if (len(filenames) <= 1):
+    print("No files to compare. Exiting...")
+
 compare_filename = ""
-cmd = input("\nComparing output summary files: Please enter\n" +
+cmd = input("\nComparing output summary files- Please enter:\n" +
             "- 'Y' to compare data with previous test\n" +
             "- 'M' to manually compare against a file for this array, or\n" +
             "- 'enter' to exit... ")
