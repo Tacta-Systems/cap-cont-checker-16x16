@@ -1219,7 +1219,7 @@ out_string += str(loop_two_res[1]) + "\n\n"
 if (array_type == 1):
     special_test_state = 0
     test_selection_raw = input("Please hit 'enter' for default (full) 1T test, or\n" +
-                               "type '1' to skip continuity checks and only run cap + TFT cont. tests, or\n" +
+                               "type '1' to only run cap + TFT cont. tests and skip continuity checks, or\n" +
                                "type '2' to only run continuity tests: ")
     if (test_selection_raw == "1"):
         special_test_state = 1
@@ -1368,13 +1368,27 @@ filenames = list(sorted(filenames, key=get_timestamp_truncated))
 
 if (len(filenames) <= 1):
     print("No files to compare. Exiting...")
+    sys.exit(0)
 
 compare_filename = ""
-cmd = input("\nComparing output summary files- Please enter:\n" +
+file_cmp_index = -1
+valid_responses = ["Y", "M", ""]
+cmd = ""
+while True:
+    try:
+        cmd = input("\nComparing output summary files- Please enter:\n" +
             "- 'Y' to compare data with previous test\n" +
             "- 'M' to manually compare against a file for this array, or\n" +
-            "- 'enter' to exit... ")
-file_cmp_index = -1
+            "- 'enter' to exit... ").upper()
+    except ValueError:
+        print("Error: please enter a valid response")
+        continue
+    if (cmd not in valid_responses):
+        print("Error: please enter a valid response")
+        continue
+    else:
+        break
+
 if (cmd.upper().strip() == 'Y'):
     file_cmp_index = -2
     compare_filename = filenames_raw[file_cmp_index]
