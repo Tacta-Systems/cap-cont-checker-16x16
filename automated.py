@@ -1192,9 +1192,7 @@ if (USING_USB_PSU):
 
 loop_one_res = test_cont_loopback_one()
 loop_two_res = test_cont_loopback_two()
-if (len(dut_stage_input) > 0):
-    dut_stage_input += "_"
-with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + "_" + dut_stage_input + "loopback_measurements.csv", 'w', newline='') as file:
+with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
     file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
     file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
 
@@ -1337,6 +1335,7 @@ if (USING_USB_PSU):
     time.sleep(PSU_DELAY_TIME)
     print("PSU off!")
 
+datetime_now = dt.datetime.now()
 output_filename = path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt"
 out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_name_input + "\n" + 
              "Array Type: " + str(array_type) + "T\n" + 
