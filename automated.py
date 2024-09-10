@@ -1192,7 +1192,9 @@ if (USING_USB_PSU):
 
 loop_one_res = test_cont_loopback_one()
 loop_two_res = test_cont_loopback_two()
-with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + "_loopback_measurements.csv", 'w', newline='') as file:
+if (len(dut_stage_input) > 0):
+    dut_stage_input += "_"
+with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + "_" + dut_stage_input + "loopback_measurements.csv", 'w', newline='') as file:
     file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
     file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
 
