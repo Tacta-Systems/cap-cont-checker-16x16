@@ -144,31 +144,6 @@ print("\nSetup Instructions:\n" +
       "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
       "- Ensure power supply is ON\n")
 
-loop_one_res = 0
-while True:
-    try:
-        loop_one_res = float(input("Please enter the resistance (ohms) between Loopback 1A/1B: "))
-    except ValueError:
-        print("Sorry, please enter a numerical value")
-        continue
-    if (loop_one_res <= 0):
-        print("Sorry, plese enter a value greater than 0")    
-    else:
-        break
-
-loop_two_res = 0
-while True:
-    try:
-        loop_two_res = float(input("Please enter the resistance (ohms) between Loopback 2A/2B: "))
-    except ValueError:
-        print("Sorry, please enter a numerical value")
-        continue
-    if (loop_two_res <= 0):
-        print("Sorry, plese enter a value greater than 0")
-    else:
-        break
-print("")
-
 array_types = {
     0: "Backplanes",
     1: "Sensor Arrays\\16x16",
@@ -1160,6 +1135,78 @@ def test_cont_vrst_to_pzbias(dut_name=dut_name_input):
         print(out_text)
         return (1, out_text)
 
+def test_cont_loopback_one(dut_name=dut_name_input):
+    test_name = "CONT_LOOPBACK_ONE"
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    out_text = "Sensor Loopback One Continuity Detection Running..."
+    out_text += "\n"
+    val = 0
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        file.write(test_name.lower() + " (ohms)\n")
+        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+        time.sleep(DELAY_TIME)
+        ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
+        time.sleep(DELAY_TIME)
+        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        file.write(str(val))
+        out_text += f"{val:,}" + " ohms"
+        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+        file.close()
+        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+        time.sleep(DELAY_TIME)
+    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+        out_text += "\nLoopback one is OPEN!\n"
+        print(out_text)
+        return(0, out_text)
+    else:
+        out_text += "\nLoopback one measures resistance!\n"
+        print(out_text)
+        return (1, out_text)
+
+def test_cont_loopback_two(dut_name=dut_name_input):
+    test_name = "CONT_LOOPBACK_TWO"
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    out_text = "Sensor Loopback Two Continuity Detection Running..."
+    out_text += "\n"
+    val = 0
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        file.write(test_name.lower() + " (ohms)\n")
+        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+        time.sleep(DELAY_TIME)
+        ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
+        time.sleep(DELAY_TIME)
+        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        file.write(str(val))
+        out_text += f"{val:,}" + " ohms"
+        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+        file.close()
+        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+        time.sleep(DELAY_TIME)
+    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+        out_text += "\nLoopback two is OPEN!\n"
+        print(out_text)
+        return(0, out_text)
+    else:
+        out_text += "\nLoopback two measures resistance!\n"
+        print(out_text)
+        return (1, out_text)
+
+if (USING_USB_PSU):
+    print("PSU turning on...")
+    # set PSU voltage to 18V, current limits to 0.05A on (-) and 0.075A on (+)
+    psu.write('INST:SEL 0')
+    psu.write('APPL 18,0.05')
+    psu.write('OUTP:STAT 1')
+    psu.write('INST:SEL 1')
+    psu.write('APPL 18,0.075')
+    psu.write('OUTP:STAT 1')
+
+    time.sleep(PSU_DELAY_TIME)
+    print("PSU on!\n")
+
+loop_one_res = test_cont_loopback_one()
+loop_two_res = test_cont_loopback_two()
+
 array_types = [1, 3]
 array_type = 1
 while True:
@@ -1177,21 +1224,8 @@ print("Running " + str(array_type) + "T array tests...")
 print("\nIf there are shorts, the terminal output (.) means open and (X) means short\n")
 
 out_string = ""
-out_string += "Loopback 1A/1B resistance: " + str(loop_one_res) + " ohms\n"
-out_string += "Loopback 2A/2B resistance: " + str(loop_two_res) + " ohms\n\n"
-
-if (USING_USB_PSU):
-    print("PSU turning on...")
-    # set PSU voltage to 18V, current limits to 0.05A on (-) and 0.075A on (+)
-    psu.write('INST:SEL 0')
-    psu.write('APPL 18,0.05')
-    psu.write('OUTP:STAT 1')
-    psu.write('INST:SEL 1')
-    psu.write('APPL 18,0.075')
-    psu.write('OUTP:STAT 1')
-
-    time.sleep(PSU_DELAY_TIME)
-    print("PSU on!\n")
+out_string += str(loop_one_res[1]) + "\n"
+out_string += str(loop_two_res[1]) + "\n\n"
 
 if (array_type == 1):
     special_test_state = 0

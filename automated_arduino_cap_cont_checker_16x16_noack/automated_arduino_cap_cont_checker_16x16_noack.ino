@@ -90,6 +90,8 @@ the reason we're using these names is because we're limited to one character + c
 - '$' for writing secondary board to "vrst/col" output
 - '%' for writing secondary board to "vrst/SHIELD" output
 - '^' for writing secondary board to "vrst/PZBIAS" output
+- '&' for loopback 1A/1B resistance
+- '*' for loopback 2A/2B resistance
 */
 bool hasPrinted = false;
 
@@ -336,7 +338,30 @@ void loop() {
       hasPrinted = true;
     }
   }
-  
+  else if (cmd == '&') { // set secondary board to LOOPBACK 1A/1B mode
+    state = '&';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(5);
+    setSecondaryColMux(4);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == '*') { // set secondary board to LOOPBACK 2A/2B mode
+    state = '&';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(6);
+    setSecondaryColMux(5);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
   else if (isHexadecimalDigit(cmd)) { // characters 0-F drive indices 0-15 of whichever column's selected
     char cmds[1];
     cmds[0] = cmd;
