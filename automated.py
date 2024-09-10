@@ -1488,6 +1488,7 @@ with open(output_filename) as f1, open(compare_filename) as f2:
                 num_diffs += 1
                 print("\n****************************************")
         print("\nThere were " + str(num_diffs) + " difference(s) detected")
+        print("WARNING: files have different number of tests...")
     elif (len(f1_chunks) > len(f2_chunks)):
         print("WARNING: files have different number of tests...")
         num_diffs = 0
@@ -1503,5 +1504,6 @@ with open(output_filename) as f1, open(compare_filename) as f2:
                 num_diffs += 1
                 print("\n****************************************")
         print("\n\nThere were " + str(num_diffs) + " difference(s) detected")
+        print("WARNING: files have different number of tests...")
     else:
         print("ERROR: File lengths are mismatched")
