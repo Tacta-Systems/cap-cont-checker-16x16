@@ -1308,7 +1308,7 @@ if (array_type == 1):
 
         out_string += cont_row_to_column[1] + "\n"
         out_string += cont_row_to_pzbias[1] + "\n"
-        out_string += cont_row_to_shield[1] + "\n"        
+        out_string += cont_row_to_shield[1] + "\n"
         out_string += cont_col_to_pzbias[1] + "\n"
         out_string += cont_col_to_shield[1] + "\n"
         out_string += cont_shield_to_pzbias[1]
