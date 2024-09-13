@@ -92,6 +92,7 @@ the reason we're using these names is because we're limited to one character + c
 - '^' for writing secondary board to "vrst/PZBIAS" output
 - '&' for loopback 1A/1B resistance
 - '*' for loopback 2A/2B resistance
+- '(' for writing secondary board to "SHIELD/PZBIAS" output
 */
 bool hasPrinted = false;
 
@@ -255,7 +256,7 @@ void loop() {
     }
   }
   else if (cmd == 'Q') { // set secondary board to "rst/column" mode
-    state = 'N';
+    state = 'Q';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
     digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
@@ -351,13 +352,25 @@ void loop() {
     }
   }
   else if (cmd == '*') { // set secondary board to LOOPBACK 2A/2B mode
-    state = '&';
+    state = '*';
     digitalWrite(AUTO_ROW_MUX_EN, HIGH);
     digitalWrite(AUTO_COL_MUX_EN, HIGH);
     digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
     digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
     setSecondaryRowMux(6);
     setSecondaryColMux(5);
+    if (!hasPrinted) {
+      hasPrinted = true;
+    }
+  }
+  else if (cmd == '(') { // set secondary board to SHIELD/PZBIAS cont check
+    state = '(';
+    digitalWrite(AUTO_ROW_MUX_EN, HIGH);
+    digitalWrite(AUTO_COL_MUX_EN, HIGH);
+    digitalWrite(AUTO_N_ROW_MODE_SEL, HIGH);
+    digitalWrite(AUTO_N_ROW_DEC_EN, HIGH);
+    setSecondaryRowMux(7);
+    setSecondaryColMux(2);
     if (!hasPrinted) {
       hasPrinted = true;
     }
