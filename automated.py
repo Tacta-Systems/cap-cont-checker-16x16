@@ -1139,6 +1139,8 @@ def test_cont_loopback_one():
     out_text = "Sensor Loopback One Continuity Detection Running..."
     out_text += "\n"
     val = 0
+    inst.write('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
     time.sleep(DELAY_TIME)
     ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
@@ -1148,6 +1150,8 @@ def test_cont_loopback_one():
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
     time.sleep(DELAY_TIME)
+    inst.write('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nLoopback one is OPEN!\n"
     else:
@@ -1159,6 +1163,8 @@ def test_cont_loopback_two():
     out_text = "Sensor Loopback Two Continuity Detection Running..."
     out_text += "\n"
     val = 0
+    inst.write('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
     time.sleep(DELAY_TIME)
     ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
@@ -1168,6 +1174,8 @@ def test_cont_loopback_two():
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
     time.sleep(DELAY_TIME)
+    inst.write('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nLoopback two is OPEN!\n"
     else:
@@ -1191,6 +1199,7 @@ if (USING_USB_PSU):
     print("PSU on!\n")
 
 loop_one_res = test_cont_loopback_one()
+time.sleep(1)
 loop_two_res = test_cont_loopback_two()
 with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
     file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
