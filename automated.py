@@ -1293,8 +1293,8 @@ if (array_type == 1):
 
         out_string += cont_row_to_column[1] + "\n"
         out_string += cont_row_to_pzbias[1] + "\n"
-        out_string += cont_col_to_pzbias[1] + "\n"
         out_string += cont_row_to_shield[1] + "\n"
+        out_string += cont_col_to_pzbias[1] + "\n"
         out_string += cont_col_to_shield[1] + "\n"
         out_string += cont_shield_to_pzbias[1]
     else:
@@ -1308,8 +1308,8 @@ if (array_type == 1):
 
         out_string += cont_row_to_column[1] + "\n"
         out_string += cont_row_to_pzbias[1] + "\n"
+        out_string += cont_row_to_shield[1] + "\n"        
         out_string += cont_col_to_pzbias[1] + "\n"
-        out_string += cont_row_to_shield[1] + "\n"
         out_string += cont_col_to_shield[1] + "\n"
         out_string += cont_shield_to_pzbias[1]
 
@@ -1355,21 +1355,23 @@ elif (array_type == 3):
     cont_vrst_to_shield = test_cont_vrst_to_shield()
     cont_vdd_to_pzbias = test_cont_vdd_to_pzbias()
     cont_vrst_to_pzbias = test_cont_vrst_to_pzbias()
+    cont_shield_to_pzbias = test_cont_shield_to_pzbias()
 
     out_string += cont_row_to_column[1] + "\n"
     out_string += cont_row_to_pzbias[1] + "\n"
-    out_string += cont_col_to_pzbias[1] + "\n"
     out_string += cont_row_to_shield[1] + "\n"
+    out_string += cont_col_to_pzbias[1] + "\n"
     out_string += cont_col_to_shield[1] + "\n"
-    out_string += cont_rst_to_column[1] + "\n"
-    out_string += cont_rst_to_pzbias[1] + "\n"
-    out_string += cont_rst_to_shield[1] + "\n"
     out_string += cont_vdd_to_column[1] + "\n"
     out_string += cont_vrst_to_column[1] + "\n"
+    out_string += cont_rst_to_column[1] + "\n"
+    out_string += cont_rst_to_shield[1] + "\n"
+    out_string += cont_rst_to_pzbias[1] + "\n"
     out_string += cont_vdd_to_shield[1] + "\n"
     out_string += cont_vrst_to_shield[1] + "\n"
     out_string += cont_vdd_to_pzbias[1] + "\n"
-    out_string += cont_vrst_to_pzbias[1]
+    out_string += cont_vrst_to_pzbias[1] + "\n"
+    out_string += cont_shield_to_pzbias[1]
 else:
     pass
 
