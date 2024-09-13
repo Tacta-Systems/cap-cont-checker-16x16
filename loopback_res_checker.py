@@ -20,7 +20,7 @@ PSU_SERIAL_NUMBER  = "583H23104"
 PSU_DELAY_TIME = 3 # seconds
 
 ser = serial.Serial()
-ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -124,19 +124,19 @@ while not is_pressed:
     ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
     time.sleep(DELAY_TIME)
     val1 = "{:.4e}".format(float(inst.query('meas:res?')))
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)    
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
     time.sleep(DELAY_TIME)
     val2 = "{:.4e}".format(float(inst.query('meas:res?')))
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    print("LOOP1 OHM " + val1 + " LOOP2 OHM " + val2)
+    print("LOOP1 OHM " + val1 + " LOOP2 OHM " + val2, end='\r')
     if (keyboard.is_pressed('q')):
         is_pressed = True
 
 ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
 time.sleep(DELAY_TIME)
 
-print("\nTurning PSU off...")
+print("\n\nTurning PSU off...")
 psu.write('OUTP:ALL 0')
 time.sleep(PSU_DELAY_TIME)
 print("PSU off!")
