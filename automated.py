@@ -469,7 +469,7 @@ def test_cont_row_to_column(dut_name=dut_name_input, start_row=0, start_col=0, e
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
-    num_shorts_text = "There were " + str(num_shorts) + " row/col short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " row/col short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     out_array = np.delete(out_array, (0), axis=1)
@@ -525,7 +525,7 @@ def test_cont_row_to_pzbias(dut_name=dut_name_input, start_row=0, end_row=16):
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                           # set all mux enables + mux channels to OFF
-    num_shorts_text = "There were " + str(num_shorts) + " row/PZBIAS short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " row/PZBIAS short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     if (num_shorts > 0):
@@ -571,7 +571,7 @@ def test_cont_col_to_pzbias(dut_name=dut_name_input, start_col=0, end_col=16):
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
-    num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     if (num_shorts > 0):
@@ -629,7 +629,7 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     time.sleep(DELAY_TIME)
-    num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS with TFT's ON short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS with TFT's ON short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     out_array = np.delete(out_array, (0), axis=0)
@@ -687,7 +687,7 @@ def test_cont_row_to_shield(dut_name=dut_name_input, start_row=0, end_row=16):
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
-    num_shorts_text = "There were " + str(num_shorts) + " row/SHIELD short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " row/SHIELD short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     if (num_shorts > 0):
@@ -733,7 +733,7 @@ def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
-    num_shorts_text = "There were " + str(num_shorts) + " col/SHIELD short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " col/SHIELD short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     if (num_shorts > 0):
@@ -812,7 +812,7 @@ def test_cont_rst_to_column(dut_name=dut_name_input, start_rst=0, start_col=0, e
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
-    num_shorts_text = "There were " + str(num_shorts) + " rst/col short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " rst/col short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     out_array = np.delete(out_array, (0), axis=1)
@@ -868,7 +868,7 @@ def test_cont_rst_to_pzbias(dut_name=dut_name_input, start_rst=0, end_rst=16):
             printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                           # set all mux enables + mux channels to OFF
-    num_shorts_text = "There were " + str(num_shorts) + " rst/PZBIAS short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " rst/PZBIAS short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     if (num_shorts > 0):
@@ -914,7 +914,7 @@ def test_cont_rst_to_shield(dut_name=dut_name_input, start_rst=0, end_rst=16):
             printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
-    num_shorts_text = "There were " + str(num_shorts) + " rst/SHIELD short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " rst/SHIELD short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     if (num_shorts > 0):
@@ -960,7 +960,7 @@ def test_cont_vdd_to_column(dut_name=dut_name_input, start_col=0, end_col=16):
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
-    num_shorts_text = "There were " + str(num_shorts) + " Vdd/Column short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " Vdd/Column short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     if (num_shorts > 0):
@@ -1006,7 +1006,7 @@ def test_cont_vrst_to_column(dut_name=dut_name_input, start_col=0, end_col=16):
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
-    num_shorts_text = "There were " + str(num_shorts) + " Vrst/Column short(s) in array " + dut_name
+    num_shorts_text = "There were " + str(num_shorts) + " Vrst/Column short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     if (num_shorts > 0):
