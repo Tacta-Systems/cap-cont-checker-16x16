@@ -1135,6 +1135,37 @@ def test_cont_vrst_to_pzbias(dut_name=dut_name_input):
         print(out_text)
         return (1, out_text)
 
+def test_cont_shield_to_pzbias(dut_name=dut_name_input):
+    test_name = "CONT_SHIELD_TO_PZBIAS"
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    out_text = "Sensor Shield to PZBIAS Continuity Detection Running..."
+    out_text += "\n"
+    val = 0
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        file.write(test_name.lower() + " (ohms)\n")
+        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+        time.sleep(DELAY_TIME)
+        ser.write(b'(')                                  # set secondary mux to SHIELD/PZBIAS mode
+        time.sleep(DELAY_TIME)
+        ser.write(b'O')                                  # enable tester outputs
+        time.sleep(DELAY_TIME)
+        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        file.write(str(val))
+        out_text += f"{val:,}" + " ohms"
+        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+        file.close()
+        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+        time.sleep(DELAY_TIME)
+    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+        out_text += "\nNo short between SHIELD and PZBIAS\n"
+        print(out_text)
+        return(0, out_text)
+    else:
+        out_text += "\nShort between SHIELD and PZBIAS\n"
+        print(out_text)
+        return (1, out_text)
+
+
 def test_cont_loopback_one():
     out_text = "Sensor Loopback One Continuity Detection Running..."
     out_text += "\n"
@@ -1258,12 +1289,14 @@ if (array_type == 1):
         cont_col_to_pzbias = test_cont_col_to_pzbias()
         cont_row_to_shield = test_cont_row_to_shield()
         cont_col_to_shield = test_cont_col_to_shield()
+        cont_shield_to_pzbias = test_cont_shield_to_pzbias()
 
         out_string += cont_row_to_column[1] + "\n"
         out_string += cont_row_to_pzbias[1] + "\n"
         out_string += cont_col_to_pzbias[1] + "\n"
         out_string += cont_row_to_shield[1] + "\n"
-        out_string += cont_col_to_shield[1]
+        out_string += cont_col_to_shield[1] + "\n"
+        out_string += cont_shield_to_pzbias[1]
     else:
         # these are tuples of (num shorts, output string)
         cont_row_to_column = test_cont_row_to_column()
@@ -1271,14 +1304,16 @@ if (array_type == 1):
         cont_col_to_pzbias = test_cont_col_to_pzbias()
         cont_row_to_shield = test_cont_row_to_shield()
         cont_col_to_shield = test_cont_col_to_shield()
+        cont_shield_to_pzbias = test_cont_shield_to_pzbias()
 
         out_string += cont_row_to_column[1] + "\n"
         out_string += cont_row_to_pzbias[1] + "\n"
         out_string += cont_col_to_pzbias[1] + "\n"
         out_string += cont_row_to_shield[1] + "\n"
-        out_string += cont_col_to_shield[1]
+        out_string += cont_col_to_shield[1] + "\n"
+        out_string += cont_shield_to_pzbias[1]
 
-        hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0
+        hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0 or cont_shield_to_pzbias[0]>0
         response = ""
         if hasShorts:
             print("This array doesn't have pants... it has shorts!")
