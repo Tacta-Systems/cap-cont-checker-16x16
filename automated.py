@@ -265,6 +265,7 @@ the reason we're using these names is because we're limited to one character + c
 - '$' for writing secondary board to "vrst/col" output
 - '%' for writing secondary board to "vrst/SHIELD" output
 - '^' for writing secondary board to "vrst/PZBIAS" output
+- '(' for writing secondary board to "SHIELD/PZBIAS" output
 '''
 
 def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
