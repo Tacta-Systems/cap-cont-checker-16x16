@@ -11,8 +11,8 @@ import sys
 import pyvisa
 import time
 import tkinter
+from pygame import mixer
 from tkinter import filedialog
-import winsound
 
 USING_USB_PSU = True
 
@@ -36,6 +36,11 @@ DELAY_TIME = 0.005
 DELAY_TEST_EQUIPMENT_TIME = 0.01
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
+
+mixer.init()
+loop1 = mixer.Sound("loop1.wav")
+loop2 = mixer.Sound("loop2.wav")
+both_loops = mixer.Sound("both_loops.wav")
 
 tkinter.Tk().withdraw()
 path = "G:\\Shared drives\\Sensing\\Testing\\" # old value is C:\Users\tacta\Desktop
@@ -134,13 +139,13 @@ while not is_pressed:
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     print("LOOP1 OHM " + val1_str + " LOOP2 OHM " + val2_str, end='\r')
     if (val1 < RES_SHORT_THRESHOLD_ROWCOL and val2 < RES_SHORT_THRESHOLD_ROWCOL):
-        winsound.Beep(880, 100)
-        time.sleep(0.25)
+        both_loops.play()
+        time.sleep(0.5)
     elif (val1 < RES_SHORT_THRESHOLD_ROWCOL):
-        winsound.Beep(440, 100)
+        loop1.play()
         time.sleep(0.25)
     elif (val2 < RES_SHORT_THRESHOLD_ROWCOL):
-        winsound.Beep(660, 100)
+        loop2.play()
         time.sleep(0.25)
     if (keyboard.is_pressed('q')):
         is_pressed = True
