@@ -12,6 +12,7 @@ import pyvisa
 import time
 import tkinter
 from tkinter import filedialog
+import winsound
 
 USING_USB_PSU = True
 
@@ -122,14 +123,25 @@ time.sleep(3)
 is_pressed = False
 while not is_pressed:
     ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
-    time.sleep(DELAY_TIME)
-    val1 = "{:.4e}".format(float(inst.query('meas:res?')))
+    time.sleep(DELAY_TIME)    
+    val1 = float(inst.query('meas:res?'))
+    val1_str = "{:.4e}".format(val1)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
     time.sleep(DELAY_TIME)
-    val2 = "{:.4e}".format(float(inst.query('meas:res?')))
+    val2 = float(inst.query('meas:res?'))
+    val2_str = "{:.4e}".format(val2)
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    print("LOOP1 OHM " + val1 + " LOOP2 OHM " + val2, end='\r')
+    print("LOOP1 OHM " + val1_str + " LOOP2 OHM " + val2_str, end='\r')
+    if (val1 < RES_SHORT_THRESHOLD_ROWCOL and val2 < RES_SHORT_THRESHOLD_ROWCOL):
+        winsound.Beep(880, 100)
+        time.sleep(0.25)
+    elif (val1 < RES_SHORT_THRESHOLD_ROWCOL):
+        winsound.Beep(440, 100)
+        time.sleep(0.25)
+    elif (val2 < RES_SHORT_THRESHOLD_ROWCOL):
+        winsound.Beep(660, 100)
+        time.sleep(0.25)
     if (keyboard.is_pressed('q')):
         is_pressed = True
 
