@@ -54,7 +54,7 @@ PSU_SERIAL_NUMBER  = "583H23104"
 PSU_DELAY_TIME = 3 # seconds
 
 ser = serial.Serial()
-ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -1275,10 +1275,10 @@ out_string = ""
 loop_one_res = 0
 loop_two_res = 0
 if (array_type_raw in [0, 1]):
+    print("Press 'q' to skip loopback check...")
     (loop_one_res, loop_two_res) = test_loopback_resistance()
     out_string += str(loop_one_res) + "\n"
     out_string += str(loop_two_res) + "\n\n"
-    print("")
     with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
         file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
         file.write(str(loop_one_res) + "," + str(loop_two_res))
@@ -1290,7 +1290,7 @@ else:
     out_string += str(loop_two_res[1]) + "\n\n"
     with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
         file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
-        file.write(str(loop_one_res[1]) + "," + str(loop_two_res[1]))
+        file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
 
 array_types = [1, 3]
 array_type = 1
