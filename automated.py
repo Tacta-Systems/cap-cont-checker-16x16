@@ -34,16 +34,18 @@ ONE INDEXED OUTPUT!
 
 import serial
 import serial.tools.list_ports
-import time
+import csv
+import glob
+import keyboard
 import os
 import sys
-import csv
+import time
 import datetime as dt
-import glob
 import numpy as np
 import pyvisa
 import tkinter
 from tkinter import filedialog
+from pygame import mixer
 
 USING_USB_PSU = True
 
@@ -52,7 +54,7 @@ PSU_SERIAL_NUMBER  = "583H23104"
 PSU_DELAY_TIME = 3 # seconds
 
 ser = serial.Serial()
-ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -63,8 +65,8 @@ ser.rtscts = False                 # disable hardware (RTS/CTS) flow control
 ser.dsrdtr = False                 # disable hardware (DSR/DTR) flow control
 ser.write_timeout = None           # timeout for write -- changed from writeTimeout
 
-DELAY_TIME = 0.05
-DELAY_TEST_EQUIPMENT_TIME = 0.1
+DELAY_TIME = 0.02 # 0.05
+DELAY_TEST_EQUIPMENT_TIME = 0 # 0.1
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
 
@@ -72,6 +74,11 @@ tkinter.Tk().withdraw()
 path = "G:\\Shared drives\\Sensing\\Testing\\" # old value is C:\Users\tacta\Desktop
 # print("Please select the directory to output data to:")
 # path = filedialog.askdirectory()
+
+mixer.init()
+loop1 = mixer.Sound("loop1.wav")
+loop2 = mixer.Sound("loop2.wav")
+both_loops = mixer.Sound("both_loops.wav")
 
 # Connect to Keithley multimeter
 rm = pyvisa.ResourceManager()
@@ -1166,6 +1173,40 @@ def test_cont_shield_to_pzbias(dut_name=dut_name_input):
         print(out_text)
         return (1, out_text)
 
+def test_loopback_resistance(num_counts=10, silent=False):
+    inst.write('sens:res:rang 10E3 ')# set resistance measurement range to 10kOhm
+    is_pressed = False
+    count = 0
+    print("")
+    while not is_pressed:
+        ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
+        time.sleep(DELAY_TIME)    
+        val1 = float(inst.query('meas:res?'))
+        val1_str = "{:.4e}".format(val1)
+        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+        ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
+        time.sleep(DELAY_TIME)
+        val2 = float(inst.query('meas:res?'))
+        val2_str = "{:.4e}".format(val2)
+        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+        print("LOOP1 OHM " + val1_str + " LOOP2 OHM " + val2_str, end='\r')
+        if (val1 < RES_SHORT_THRESHOLD_ROWCOL and val2 < RES_SHORT_THRESHOLD_ROWCOL):
+            if not silent:
+                both_loops.play()
+            time.sleep(0.5)
+            count += 1
+        elif (val1 < RES_SHORT_THRESHOLD_ROWCOL):
+            if not silent:
+                loop1.play()
+            time.sleep(0.25)
+        elif (val2 < RES_SHORT_THRESHOLD_ROWCOL):
+            if not silent:
+                loop2.play()
+            time.sleep(0.25)
+        if (keyboard.is_pressed('q') or count > num_counts):
+            is_pressed = True
+            print("")
+            return (val1, val2)
 
 def test_cont_loopback_one():
     out_text = "Sensor Loopback One Continuity Detection Running..."
@@ -1228,14 +1269,28 @@ if (USING_USB_PSU):
     psu.write('OUTP:STAT 1')
 
     time.sleep(PSU_DELAY_TIME)
-    print("PSU on!\n")
+    print("PSU on!")
 
-loop_one_res = test_cont_loopback_one()
-time.sleep(1)
-loop_two_res = test_cont_loopback_two()
-with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
-    file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
-    file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
+out_string = ""
+loop_one_res = 0
+loop_two_res = 0
+if (array_type_raw in [0, 1]):
+    (loop_one_res, loop_two_res) = test_loopback_resistance()
+    out_string += str(loop_one_res) + "\n"
+    out_string += str(loop_two_res) + "\n\n"
+    print("")
+    with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
+        file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
+        file.write(str(loop_one_res) + "," + str(loop_two_res))
+else:
+    loop_one_res = test_cont_loopback_one()
+    time.sleep(1)
+    loop_two_res = test_cont_loopback_two()
+    out_string += str(loop_one_res[1]) + "\n"
+    out_string += str(loop_two_res[1]) + "\n\n"
+    with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
+        file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
+        file.write(str(loop_one_res[1]) + "," + str(loop_two_res[1]))
 
 array_types = [1, 3]
 array_type = 1
@@ -1252,10 +1307,6 @@ while True:
         break
 print("Running " + str(array_type) + "T array tests...")
 print("\nIf there are shorts, the terminal output (.) means open and (X) means short\n")
-
-out_string = ""
-out_string += str(loop_one_res[1]) + "\n"
-out_string += str(loop_two_res[1]) + "\n\n"
 
 if (array_type == 1):
     special_test_state = 0
