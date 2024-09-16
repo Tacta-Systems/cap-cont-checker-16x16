@@ -1277,8 +1277,8 @@ loop_two_res = 0
 if (array_type_raw in [0, 1]):
     print("Press 'q' to skip loopback check...")
     (loop_one_res, loop_two_res) = test_loopback_resistance()
-    out_string += str(loop_one_res) + "\n"
-    out_string += str(loop_two_res) + "\n\n"
+    out_string += "Loopback 1 resistance: " + str(loop_one_res) + "ohms" + "\n"
+    out_string += "Loopback 2 resistance: " + str(loop_two_res) + "ohms" + "\n\n"
     with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_id_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
         file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
         file.write(str(loop_one_res) + "," + str(loop_two_res))
