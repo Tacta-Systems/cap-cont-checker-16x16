@@ -54,7 +54,7 @@ PSU_SERIAL_NUMBER  = "583H23104"
 PSU_DELAY_TIME = 3 # seconds
 
 ser = serial.Serial()
-ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -1433,6 +1433,7 @@ if (USING_USB_PSU):
     psu.write('OUTP:ALL 0')
     time.sleep(PSU_DELAY_TIME)
     print("PSU off!")
+print("Done testing serial number " + dut_id_input + "!\n")
 
 datetime_now = dt.datetime.now()
 output_filename = path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt"
@@ -1475,7 +1476,7 @@ valid_responses = ["Y", "M", ""]
 cmd = ""
 while True:
     try:
-        cmd = input("\nComparing output summary files- Please enter:\n" +
+        cmd = input("Comparing output summary files- Please enter:\n" +
             "- 'Y' to compare data with previous test\n" +
             "- 'M' to manually compare against a file for this array, or\n" +
             "- 'enter' to exit... ").upper()
