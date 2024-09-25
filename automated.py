@@ -66,8 +66,8 @@ ser.rtscts = False                 # disable hardware (RTS/CTS) flow control
 ser.dsrdtr = False                 # disable hardware (DSR/DTR) flow control
 ser.write_timeout = None           # timeout for write -- changed from writeTimeout
 
-DELAY_TIME = 0.02 # 0.05
-DELAY_TEST_EQUIPMENT_TIME = 0 # 0.1
+DELAY_TIME_SERIAL = 0.02 # 0.05
+DELAY_TIME_INST = 0 # 0.1
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
 
@@ -284,6 +284,19 @@ the reason we're using these names is because we're limited to one character + c
 - '(' for writing secondary board to "SHIELD/PZBIAS" output
 '''
 
+def serialWriteWithDelay(byte):
+    ser.write(byte)
+    time.sleep(DELAY_TIME_SERIAL)
+    
+def instWriteWithDelay(writeString):
+    inst.write(writeString)
+    time.sleep(DELAY_TIME_INST)
+    
+def instQueryWithDelay(queryString):
+    val = inst.query(queryString)
+    time.sleep(DELAY_TIME_INST)
+    return val
+
 def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, dut_type=array_type, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CAP_COL_TO_PZBIAS"
     dut_name_full = dut_name_raw + dut_stage_raw
@@ -300,10 +313,8 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
     with open(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
-        inst.write('sens:cap:rang ' + meas_range)            # limits cap range to the smallest possible value
-        time.sleep(DELAY_TIME)
-        inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
-        time.sleep(DELAY_TIME)
+        instWriteWithDelay('sens:cap:rang ' + meas_range)            # limits cap range to the smallest possible value
+        instQueryWithDelay('meas:cap?')                              # set Keithley mode to capacitance measurement
         print("Sensor Capacitance Check to PZBIAS Running...")
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
@@ -321,39 +332,26 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
 
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                              # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'I')                              # "OFF" measurement" - all row switches are held at -8V
-                time.sleep(DELAY_TIME)
-                tft_off_meas = float(inst.query('meas:cap?'))# read mux off measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                serialWriteWithDelay(b'Z')                              # set row switches to high-Z and disable muxes
+                serialWriteWithDelay(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
+                serialWriteWithDelay(b'R')                              # set mode to row write mode
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))      # write row index
+                serialWriteWithDelay(b'L')                              # set mode to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                serialWriteWithDelay(b'I')                              # "OFF" measurement" - all row switches are held at -8V
 
-                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                              # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
-                time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('meas:cap?')) # read mux on measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                tft_off_meas = float(instQueryWithDelay('meas:cap?'))# read mux off measurement
+
+                serialWriteWithDelay(b'Z')                              # set row switches to high-Z and disable muxes
+                serialWriteWithDelay(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
+                serialWriteWithDelay(b'R')                              # set mode to row write mode
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))      # write row index
+                serialWriteWithDelay(b'L')                              # set mode to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                serialWriteWithDelay(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
+
+                tft_on_meas = float(instQueryWithDelay('meas:cap?')) # read mux on measurement
+                
                 tft_cal_meas = tft_on_meas - tft_off_meas
                 if (tft_cal_meas*1e12 < cap_bound_vals[0]):
                     num_below_threshold += 1
@@ -364,10 +362,10 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
                 out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
                 out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
-                time.sleep(DELAY_TIME)
+
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                          # set all mux enables + mux channels to OFF
     out_array_delta = np.delete(out_array_delta, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
     out_array_on = np.delete(out_array_on, (0), axis=0)
@@ -385,10 +383,8 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
-        inst.write('sens:cap:rang ' + meas_range)            # limits cap range to the smallest possible value
-        time.sleep(DELAY_TIME)
-        inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
-        time.sleep(DELAY_TIME)
+        instWriteWithDelay('sens:cap:rang ' + meas_range)            # limits cap range to the smallest possible value
+        instQueryWithDelay('meas:cap?')                              # set Keithley mode to capacitance measurement
         print("Sensor Capacitance Check to SHIELD Running...")
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
@@ -406,47 +402,34 @@ def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_ro
 
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                              # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'I')                              # "OFF" measurement" - all row switches are held at -8V
-                time.sleep(DELAY_TIME)
-                tft_off_meas = float(inst.query('meas:cap?'))# read mux off measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                serialWriteWithDelay(b'Z')                              # set row switches to high-Z and disable muxes
+                serialWriteWithDelay(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
+                serialWriteWithDelay(b'R')                              # set mode to row write mode
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))      # write row index
+                serialWriteWithDelay(b'L')                              # set mode to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                serialWriteWithDelay(b'I')                              # "OFF" measurement" - all row switches are held at -8V
+                
+                tft_off_meas = float(instQueryWithDelay('meas:cap?'))# read mux off measurement
 
-                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                              # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
-                time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('meas:cap?')) # read mux on measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                serialWriteWithDelay(b'Z')                              # set row switches to high-Z and disable muxes
+                serialWriteWithDelay(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
+                serialWriteWithDelay(b'R')                              # set mode to row write mode
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))      # write row index
+                serialWriteWithDelay(b'L')                              # set mode to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))      # write column index
+                serialWriteWithDelay(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
+                
+                tft_on_meas = float(instQueryWithDelay('meas:cap?')) # read mux on measurement
+                
                 tft_cal_meas = tft_on_meas - tft_off_meas
                 out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
                 out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
-                time.sleep(DELAY_TIME)
+
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                          # set all mux enables + mux channels to OFF
     out_array_delta = np.delete(out_array_delta, (0), axis=0)
     out_array_on = np.delete(out_array_on, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
@@ -468,8 +451,7 @@ def test_cont_row_to_column(dut_name=dut_name_input, start_row=0, start_col=0, e
     out_array[1][0] = "Resistance (ohm)"
     num_shorts = 0
     out_text = ""
-    inst.query('meas:res?')
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')
     out_text += "Sensor Row to Col Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -477,33 +459,25 @@ def test_cont_row_to_column(dut_name=dut_name_input, start_row=0, start_col=0, e
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Row Res. to Col. (ohm)"])
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
-        time.sleep(DELAY_TIME)
+        
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                time.sleep(DELAY_TIME)
-                ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'U')                                  # set secondary mux to row/col mode
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                                  # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))          # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                                  # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))          # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'O')                                  # set mode to continuity check
-                time.sleep(DELAY_TIME)
-                val = float(inst.query('meas:res?'))             # read resistance measurement
+                serialWriteWithDelay(b'Z')                                  # set row switches to high-Z and disable muxes
+                serialWriteWithDelay(b'U')                                  # set secondary mux to row/col mode
+                serialWriteWithDelay(b'R')                                  # set mode to row write mode
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))          # write row index
+                serialWriteWithDelay(b'L')                                  # set mode to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))          # write column index
+                serialWriteWithDelay(b'O')                                  # set mode to continuity check
+                
+                val = float(instQueryWithDelay('meas:res?'))             # read resistance measurement
                 out_array[(16-row)+1][col+1] = val
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
                 if (val < RES_SHORT_THRESHOLD_ROWCOL):
                     num_shorts += 1
                 writer.writerow([str(row+1), str(col+1), val])
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                              # set all mux enables + mux channels to OFF
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     num_shorts_text = "There were " + str(num_shorts) + " row/col short(s)"
@@ -531,8 +505,7 @@ def test_cont_row_to_pzbias(dut_name=dut_name_input, start_row=0, end_row=16):
     num_shorts = 0
     summary_text = ""
     out_text = ""
-    inst.query('meas:res?')                              # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                              # set Keithley mode to resistance measurement
     out_text += "Sensor Row to PZBIAS Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -540,19 +513,15 @@ def test_cont_row_to_pzbias(dut_name=dut_name_input, start_row=0, end_row=16):
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Row Res. to PZBIAS (ohm)"])
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
+        
         for row in range(start_row, end_row):
-            ser.write(b'Z')                                     # set row switches to high-Z and disable muxes
-            time.sleep(DELAY_TIME)
-            ser.write(b'V')                                     # set secondary mux to row/PZBIAS mode
-            time.sleep(DELAY_TIME)
-            ser.write(b'R')                                     # set mode to row write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(row)[2:], 'utf-8'))             # write the row address to the tester
-            time.sleep(DELAY_TIME)
-            ser.write(b'O')                                     # set mode to continuity check mode
-            time.sleep(DELAY_TIME)
-            val = float(inst.query('meas:res?'))                # read resistance from the meter
-            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            serialWriteWithDelay(b'Z')                                     # set row switches to high-Z and disable muxes
+            serialWriteWithDelay(b'V')                                     # set secondary mux to row/PZBIAS mode
+            serialWriteWithDelay(b'R')                                     # set mode to row write mode
+            serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))             # write the row address to the tester
+            serialWriteWithDelay(b'O')                                     # set mode to continuity check mode
+            
+            val = float(instQueryWithDelay('meas:res?'))                # read resistance from the meter
             writer.writerow([str(row+1), val])                  # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
@@ -560,8 +529,8 @@ def test_cont_row_to_pzbias(dut_name=dut_name_input, start_row=0, end_row=16):
             else:
                 summary_text += "."
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                           # set all mux enables + mux channels to OFF
+            
+    serialWriteWithDelay(b'Z')                                           # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " row/PZBIAS short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -577,8 +546,7 @@ def test_cont_col_to_pzbias(dut_name=dut_name_input, start_col=0, end_col=16):
     num_shorts = 0
     summary_text = ""
     out_text = ""
-    inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                                  # set Keithley mode to resistance measurement
     out_text += "Sensor Col to PZBIAS Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -586,19 +554,15 @@ def test_cont_col_to_pzbias(dut_name=dut_name_input, start_col=0, end_col=16):
         writer = csv.writer(file)
         writer.writerow(["Col Index", "Col. Res. to PZBIAS (ohm)"])
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
+        
         for col in range(start_col, end_col):
-            ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
-            time.sleep(DELAY_TIME)
-            ser.write(b'W')                                  # set secondary board mode to col/PZBIAS
-            time.sleep(DELAY_TIME)
-            ser.write(b'L')                                  # set mode to column write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
-            time.sleep(DELAY_TIME)
-            ser.write(b'O')                                  # set mode to continuity check mode
-            time.sleep(DELAY_TIME)
-            val = float(inst.query('meas:res?'))             # read resistance from the meter
-            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            serialWriteWithDelay(b'Z')                                  # set row switches to high-Z and disable muxes
+            serialWriteWithDelay(b'W')                                  # set secondary board mode to col/PZBIAS
+            serialWriteWithDelay(b'L')                                  # set mode to column write mode
+            serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
+            serialWriteWithDelay(b'O')                                  # set mode to continuity check mode
+
+            val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
             writer.writerow([str(col+1), val])               # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
@@ -606,8 +570,8 @@ def test_cont_col_to_pzbias(dut_name=dut_name_input, start_col=0, end_col=16):
             else:
                 summary_text += "."
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                              # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -622,8 +586,7 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
     out_text = ""
-    inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                                  # set Keithley mode to resistance measurement
     out_array = np.zeros((18, 17), dtype='U64')             # create string-typed numpy array
     out_array[1] = ["C" + str(i) for i in range(0, 17)]     # set cols of output array to be "C1"..."C16"
     for i in range(len(out_array)):
@@ -639,33 +602,25 @@ def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_ro
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Col. Res. to PZBIAS w/ TFTs ON (ohm)"])
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
+        
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                ser.write(b'Z')                                 # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'W')                                 # set secondary mux to col/PZBIAS mode
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                                 # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))         # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                                 # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))         # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'P')                                 # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
-                time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('meas:res?'))    # read mux on measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)           # TODO: see how small we can make this delay
+                serialWriteWithDelay(b'Z')                                 # set row switches to high-Z and disable muxes
+                serialWriteWithDelay(b'W')                                 # set secondary mux to col/PZBIAS mode
+                serialWriteWithDelay(b'R')                                 # set mode to row write mode
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))         # write row index
+                serialWriteWithDelay(b'L')                                 # set mode to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))         # write column index
+                serialWriteWithDelay(b'P')                                 # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
+
+                tft_on_meas = float(instQueryWithDelay('meas:res?'))    # read mux on measurement
                 if (tft_on_meas < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                     num_shorts += 1
                 out_array[(16-row)+1][col+1] = tft_on_meas
                 writer.writerow([str(row+1), str(col+1), tft_on_meas]) # appends to CSV with 1 index
-                time.sleep(DELAY_TIME)
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
-    time.sleep(DELAY_TIME)
+
+    serialWriteWithDelay(b'Z')                                              # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS with TFT's ON short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -693,8 +648,7 @@ def test_cont_row_to_shield(dut_name=dut_name_input, start_row=0, end_row=16):
     num_shorts = 0
     summary_text = ""
     out_text = ""
-    inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                                  # set Keithley mode to resistance measurement
     out_text += "Sensor Row to SHIELD Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -702,19 +656,15 @@ def test_cont_row_to_shield(dut_name=dut_name_input, start_row=0, end_row=16):
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Row Res. to SHIELD (ohm)"])
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
+        
         for row in range(start_row, end_row):
-            ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
-            time.sleep(DELAY_TIME)
-            ser.write(b'X')                                  # set secondary mux to row/SHIELD mode
-            time.sleep(DELAY_TIME)
-            ser.write(b'R')                                  # set mode to row write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(row)[2:], 'utf-8'))          # write the row address to the tester
-            time.sleep(DELAY_TIME)
-            ser.write(b'O')                                  # set mode to continuity check mode
-            time.sleep(DELAY_TIME)
-            val = float(inst.query('meas:res?'))             # read resistance from the meter
-            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            serialWriteWithDelay(b'Z')                                  # set row switches to high-Z and disable muxes
+            serialWriteWithDelay(b'X')                                  # set secondary mux to row/SHIELD mode
+            serialWriteWithDelay(b'R')                                  # set mode to row write mode
+            serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))          # write the row address to the tester
+            serialWriteWithDelay(b'O')                                  # set mode to continuity check mode
+
+            val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
             writer.writerow([str(row+1), val])               # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
@@ -722,8 +672,8 @@ def test_cont_row_to_shield(dut_name=dut_name_input, start_row=0, end_row=16):
             else:
                 summary_text += "."
             printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                         # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " row/SHIELD short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -739,8 +689,7 @@ def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
     num_shorts = 0
     summary_text = ""
     out_text = ""
-    inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                                  # set Keithley mode to resistance measurement
     out_text += "Sensor Col to SHIELD Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -749,18 +698,13 @@ def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
         writer.writerow(["Col Index", "Col. Res. to SHIELD (ohm)"])
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
         for col in range(start_col, end_col):
-            ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
-            time.sleep(DELAY_TIME)
-            ser.write(b'Y')                                  # set secondary mux to col/SHIELD mode
-            time.sleep(DELAY_TIME)
-            ser.write(b'L')                                  # set mode to column write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
-            time.sleep(DELAY_TIME)
-            ser.write(b'O')                                  # set mode to continuity check mode
-            time.sleep(DELAY_TIME)
-            val = float(inst.query('meas:res?'))             # read resistance from the meter
-            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            serialWriteWithDelay(b'Z')                                  # set row switches to high-Z and disable muxes
+            serialWriteWithDelay(b'Y')                                  # set secondary mux to col/SHIELD mode
+            serialWriteWithDelay(b'L')                                  # set mode to column write mode
+            serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
+            serialWriteWithDelay(b'O')                                  # set mode to continuity check mode
+
+            val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
             writer.writerow([str(col+1), val])               # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
@@ -768,8 +712,8 @@ def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
             else:
                 summary_text += "."
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                          # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " col/SHIELD short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -781,20 +725,17 @@ def test_cont_col_to_shield(dut_name=dut_name_input, start_col=0, end_col=16):
 
 def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
     printProgressBar(0, 16, suffix = "Reset 0/16", length = 16)
+    
     for i in range(start_rst, end_rst):
-        ser.write(b'Z')
-        time.sleep(DELAY_TIME)
-        ser.write(b'T')
-        time.sleep(DELAY_TIME)
-        ser.write(bytes(hex(i)[2:], 'utf-8'))
-        time.sleep(DELAY_TIME)
-        ser.write(b'S')
-        time.sleep(DELAY_TIME)
+        serialWriteWithDelay(b'Z')
+        serialWriteWithDelay(b'T')
+        serialWriteWithDelay(bytes(hex(i)[2:], 'utf-8'))
+        serialWriteWithDelay(b'S')
+
         # do stuff here
         printProgressBar(i+1, 16, suffix = "Reset " + str(i+1) + "/16", length = 16)
-        time.sleep(DELAY_TIME)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                              # set all mux enables + mux channels to OFF
     return(0, "")
 
 def test_cont_rst_to_column(dut_name=dut_name_input, start_rst=0, start_col=0, end_rst = 16, end_col = 16):
@@ -811,8 +752,7 @@ def test_cont_rst_to_column(dut_name=dut_name_input, start_rst=0, start_col=0, e
     out_array[1][0] = "Resistance (ohm)"
     num_shorts = 0
     out_text = ""
-    inst.query('meas:res?')
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')
     out_text += "Sensor Rst to Col Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -820,33 +760,25 @@ def test_cont_rst_to_column(dut_name=dut_name_input, start_rst=0, start_col=0, e
         writer = csv.writer(file)
         writer.writerow(["Rst Index", "Column Index", "Rst Res. to Col. (ohm)"])
         printProgressBar(0, 16, suffix = "Rst 0/16", length = 16)
-        time.sleep(DELAY_TIME)
+
         for rst in range(start_rst, end_rst):
             for col in range(start_col, end_col):
-                time.sleep(DELAY_TIME)
-                ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'Q')                                  # set secondary mux to row/col mode
-                time.sleep(DELAY_TIME)
-                ser.write(b'T')                                  # set mode to rst write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(rst)[2:], 'utf-8'))          # write rst index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                                  # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))          # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'O')                                  # set mode to continuity check
-                time.sleep(DELAY_TIME)
-                val = float(inst.query('meas:res?'))             # read resistance measurement
+                serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+                serialWriteWithDelay(b'Q')                                  # set secondary mux to row/col mode
+                serialWriteWithDelay(b'T')                                  # set mode to rst write mode
+                serialWriteWithDelay(bytes(hex(rst)[2:], 'utf-8'))          # write rst index
+                serialWriteWithDelay(b'L')                                  # set mode to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))          # write column index
+                serialWriteWithDelay(b'O')                                  # set mode to continuity check
+
+                val = float(instQueryWithDelay('meas:res?'))             # read resistance measurement
                 out_array[(16-rst)+1][col+1] = val
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
                 if (val < RES_SHORT_THRESHOLD_ROWCOL):
                     num_shorts += 1
                 writer.writerow([str(rst+1), str(col+1), val])
             printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                              # set all mux enables + mux channels to OFF
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     num_shorts_text = "There were " + str(num_shorts) + " rst/col short(s)"
@@ -874,8 +806,7 @@ def test_cont_rst_to_pzbias(dut_name=dut_name_input, start_rst=0, end_rst=16):
     num_shorts = 0
     summary_text = ""
     out_text = ""
-    inst.query('meas:res?')                              # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                              # set Keithley mode to resistance measurement
     out_text += "Sensor Rst to PZBIAS Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -883,19 +814,15 @@ def test_cont_rst_to_pzbias(dut_name=dut_name_input, start_rst=0, end_rst=16):
         writer = csv.writer(file)
         writer.writerow(["Rst Index", "Rst Res. to PZBIAS (ohm)"])
         printProgressBar(0, 16, suffix = "Rst 0/16", length = 16)
+        
         for rst in range(start_rst, end_rst):
-            ser.write(b'Z')                                     # set rst switches to high-Z and disable muxes
-            time.sleep(DELAY_TIME)
-            ser.write(b'M')                                     # set secondary mux to rst/PZBIAS mode
-            time.sleep(DELAY_TIME)
-            ser.write(b'T')                                     # set mode to rst write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(rst)[2:], 'utf-8'))             # write the rst address to the tester
-            time.sleep(DELAY_TIME)
-            ser.write(b'O')                                     # set mode to continuity check mode
-            time.sleep(DELAY_TIME)
-            val = float(inst.query('meas:res?'))                # read resistance from the meter
-            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            serialWriteWithDelay(b'Z')                                     # set rst switches to high-Z and disable muxes
+            serialWriteWithDelay(b'M')                                     # set secondary mux to rst/PZBIAS mode
+            serialWriteWithDelay(b'T')                                     # set mode to rst write mode
+            serialWriteWithDelay(bytes(hex(rst)[2:], 'utf-8'))             # write the rst address to the tester
+            serialWriteWithDelay(b'O')                                     # set mode to continuity check mode
+            
+            val = float(instQueryWithDelay('meas:res?'))                # read resistance from the meter
             writer.writerow([str(rst+1), val])                  # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
@@ -903,8 +830,8 @@ def test_cont_rst_to_pzbias(dut_name=dut_name_input, start_rst=0, end_rst=16):
             else:
                 summary_text += "."
             printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                           # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                           # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " rst/PZBIAS short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -920,8 +847,7 @@ def test_cont_rst_to_shield(dut_name=dut_name_input, start_rst=0, end_rst=16):
     num_shorts = 0
     summary_text = ""
     out_text = ""
-    inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                                  # set Keithley mode to resistance measurement
     out_text += "Sensor Rst to SHIELD Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -929,19 +855,15 @@ def test_cont_rst_to_shield(dut_name=dut_name_input, start_rst=0, end_rst=16):
         writer = csv.writer(file)
         writer.writerow(["Rst Index", "Rst Res. to SHIELD (ohm)"])
         printProgressBar(0, 16, suffix = "Rst 0/16", length = 16)
+        
         for rst in range(start_rst, end_rst):
-            ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-            time.sleep(DELAY_TIME)
-            ser.write(b'N')                                  # set secondary mux to rst/SHIELD mode
-            time.sleep(DELAY_TIME)
-            ser.write(b'T')                                  # set mode to rst write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(rst)[2:], 'utf-8'))          # write the rst address to the tester
-            time.sleep(DELAY_TIME)
-            ser.write(b'O')                                  # set mode to continuity check mode
-            time.sleep(DELAY_TIME)
-            val = float(inst.query('meas:res?'))             # read resistance from the meter
-            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+            serialWriteWithDelay(b'N')                                  # set secondary mux to rst/SHIELD mode
+            serialWriteWithDelay(b'T')                                  # set mode to rst write mode
+            serialWriteWithDelay(bytes(hex(rst)[2:], 'utf-8'))          # write the rst address to the tester
+            serialWriteWithDelay(b'O')                                  # set mode to continuity check mode
+
+            val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
             writer.writerow([str(rst+1), val])               # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
@@ -949,8 +871,8 @@ def test_cont_rst_to_shield(dut_name=dut_name_input, start_rst=0, end_rst=16):
             else:
                 summary_text += "."
             printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                         # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " rst/SHIELD short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -966,8 +888,7 @@ def test_cont_vdd_to_column(dut_name=dut_name_input, start_col=0, end_col=16):
     num_shorts = 0
     summary_text = ""
     out_text = ""
-    inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                                  # set Keithley mode to resistance measurement
     out_text += "Sensor Vdd to Column Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -975,19 +896,15 @@ def test_cont_vdd_to_column(dut_name=dut_name_input, start_col=0, end_col=16):
         writer = csv.writer(file)
         writer.writerow(["Column Index", "Vdd Res. to Column (ohm)"])
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
+        
         for col in range(start_col, end_col):
-            ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-            time.sleep(DELAY_TIME)
-            ser.write(b'!')                                  # set secondary mux to vdd/column mode
-            time.sleep(DELAY_TIME)
-            ser.write(b'L')                                  # set mode to column write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
-            time.sleep(DELAY_TIME)
-            ser.write(b'O')                                  # set mode to continuity check mode
-            time.sleep(DELAY_TIME)
-            val = float(inst.query('meas:res?'))             # read resistance from the meter
-            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+            serialWriteWithDelay(b'!')                                  # set secondary mux to vdd/column mode
+            serialWriteWithDelay(b'L')                                  # set mode to column write mode
+            serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
+            serialWriteWithDelay(b'O')                                  # set mode to continuity check mode
+
+            val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
             writer.writerow([str(col+1), val])               # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
@@ -995,8 +912,8 @@ def test_cont_vdd_to_column(dut_name=dut_name_input, start_col=0, end_col=16):
             else:
                 summary_text += "."
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                         # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " Vdd/Column short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -1012,8 +929,7 @@ def test_cont_vrst_to_column(dut_name=dut_name_input, start_col=0, end_col=16):
     num_shorts = 0
     summary_text = ""
     out_text = ""
-    inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME)
+    instQueryWithDelay('meas:res?')                                  # set Keithley mode to resistance measurement
     out_text += "Sensor Vrst to Column Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -1021,19 +937,15 @@ def test_cont_vrst_to_column(dut_name=dut_name_input, start_col=0, end_col=16):
         writer = csv.writer(file)
         writer.writerow(["Column Index", "Vrst Res. to Column (ohm)"])
         printProgressBar(0, 16, suffix = "Col 0/16", length = 16)
+        
         for col in range(start_col, end_col):
-            ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-            time.sleep(DELAY_TIME)
-            ser.write(b'$')                                  # set secondary mux to vrst/column mode
-            time.sleep(DELAY_TIME)
-            ser.write(b'L')                                  # set mode to column write mode
-            time.sleep(DELAY_TIME)
-            ser.write(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
-            time.sleep(DELAY_TIME)
-            ser.write(b'O')                                  # set mode to continuity check mode
-            time.sleep(DELAY_TIME)
-            val = float(inst.query('meas:res?'))             # read resistance from the meter
-            time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+            serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+            serialWriteWithDelay(b'$')                                  # set secondary mux to vrst/column mode
+            serialWriteWithDelay(b'L')                                  # set mode to column write mode
+            serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))          # write the column address to the tester
+            serialWriteWithDelay(b'O')                                  # set mode to continuity check mode
+
+            val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
             writer.writerow([str(col+1), val])               # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
@@ -1041,8 +953,8 @@ def test_cont_vrst_to_column(dut_name=dut_name_input, start_col=0, end_col=16):
             else:
                 summary_text += "."
             printProgressBar(col+1, 16, suffix = "Col " + str(col+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                         # set all mux enables + mux channels to OFF
+
+    serialWriteWithDelay(b'Z')                                         # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " Vrst/Column short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -1060,19 +972,15 @@ def test_cont_vdd_to_shield(dut_name=dut_name_input):
     val = 0
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'@')                                  # set secondary mux to vdd/SHIELD mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+        serialWriteWithDelay(b'@')                                  # set secondary mux to vdd/SHIELD mode
+        serialWriteWithDelay(b'O')                                  # enable tester outputs
+        
+        val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
         file.write(str(val))
         out_text += f"{val:,}"  + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
+    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nNo short between Vdd and SHIELD\n"
         print(out_text)
@@ -1090,19 +998,15 @@ def test_cont_vrst_to_shield(dut_name=dut_name_input):
     val = 0
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'%')                                  # set secondary mux to Vrst/SHIELD mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+        serialWriteWithDelay(b'%')                                  # set secondary mux to Vrst/SHIELD mode
+        serialWriteWithDelay(b'O')                                  # enable tester outputs
+
+        val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
         file.write(str(val))
         out_text += f"{val:,}" + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
+    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nNo short between Vrst and SHIELD\n"
         print(out_text)
@@ -1120,19 +1024,15 @@ def test_cont_vdd_to_pzbias(dut_name=dut_name_input):
     val = 0
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'#')                                  # set secondary mux to vdd/PZBIAS mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+        serialWriteWithDelay(b'#')                                  # set secondary mux to vdd/PZBIAS mode
+        serialWriteWithDelay(b'O')                                  # enable tester outputs
+
+        val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
         file.write(str(val))
         out_text += f"{val:,}" + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
+    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nNo short between Vdd and PZBIAS\n"
         print(out_text)
@@ -1150,19 +1050,15 @@ def test_cont_vrst_to_pzbias(dut_name=dut_name_input):
     val = 0
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'^')                                  # set secondary mux to Vrst/SHIELD mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+        serialWriteWithDelay(b'^')                                  # set secondary mux to Vrst/SHIELD mode
+        serialWriteWithDelay(b'O')                                  # enable tester outputs
+
+        val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
         file.write(str(val))
         out_text += f"{val:,}" + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
+        serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nNo short between Vrst and SHIELD\n"
         print(out_text)
@@ -1180,19 +1076,15 @@ def test_cont_shield_to_pzbias(dut_name=dut_name_input):
     val = 0
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'(')                                  # set secondary mux to SHIELD/PZBIAS mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+        serialWriteWithDelay(b'(')                                  # set secondary mux to SHIELD/PZBIAS mode
+        serialWriteWithDelay(b'O')                                  # enable tester outputs
+        
+        val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
         file.write(str(val))
         out_text += f"{val:,}" + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
         file.close()
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
+        serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nNo short between SHIELD and PZBIAS\n"
         print(out_text)
@@ -1203,21 +1095,21 @@ def test_cont_shield_to_pzbias(dut_name=dut_name_input):
         return (1, out_text)
 
 def test_loopback_resistance(num_counts=10, silent=False):
-    inst.write('sens:res:rang 10E3 ')# set resistance measurement range to 10kOhm
+    instWriteWithDelay('sens:res:rang 10E3 ')# set resistance measurement range to 10kOhm
     is_pressed = False
     count = 0
     print("")
     while not is_pressed:
-        ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
-        time.sleep(DELAY_TIME)    
-        val1 = float(inst.query('meas:res?'))
+        serialWriteWithDelay(b'&')                                  # set secondary mux to Loopback 1 mode
+        
+        val1 = float(instQueryWithDelay('meas:res?'))
         val1_str = "{:.4e}".format(val1)
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-        ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
-        time.sleep(DELAY_TIME)
-        val2 = float(inst.query('meas:res?'))
+        
+        serialWriteWithDelay(b'*')                                  # set secondary mux to Loopback 2 mode
+        
+        val2 = float(instQueryWithDelay('meas:res?'))
         val2_str = "{:.4e}".format(val2)
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+
         print("LOOP1 OHM " + val1_str + " LOOP2 OHM " + val2_str, end='\r')
         if (val1 < RES_SHORT_THRESHOLD_ROWCOL and val2 < RES_SHORT_THRESHOLD_ROWCOL):
             if not silent:
@@ -1241,19 +1133,13 @@ def test_cont_loopback_one():
     out_text = "Sensor Loopback One Continuity Detection Running..."
     out_text += "\n"
     val = 0
-    inst.write('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
-    ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
-    time.sleep(DELAY_TIME)
-    val = float(inst.query('meas:res?'))             # read resistance from the meter
+    instWriteWithDelay('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
+    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+    serialWriteWithDelay(b'&')                                  # set secondary mux to Loopback 1 mode
+    val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
     out_text += f"{val:,}" + " ohms"
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
-    inst.write('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+    instWriteWithDelay('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nLoopback one is OPEN!\n"
     else:
@@ -1265,19 +1151,13 @@ def test_cont_loopback_two():
     out_text = "Sensor Loopback Two Continuity Detection Running..."
     out_text += "\n"
     val = 0
-    inst.write('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
-    ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
-    time.sleep(DELAY_TIME)
-    val = float(inst.query('meas:res?'))             # read resistance from the meter
+    instWriteWithDelay('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
+    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+    serialWriteWithDelay(b'*')                                  # set secondary mux to Loopback 2 mode
+    val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
     out_text += f"{val:,}" + " ohms"
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
-    inst.write('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
+    instWriteWithDelay('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\nLoopback two is OPEN!\n"
     else:
