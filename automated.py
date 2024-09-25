@@ -1134,41 +1134,30 @@ def test_loopback_resistance(num_counts=10, silent=False):
             print("")
             instWriteWithDelay('sens:res:rang ' + RES_RANGE_DEFAULT)
             return (val1, val2)
-
-def test_cont_loopback_one():
-    out_text = "Sensor Loopback One Continuity Detection Running..."
-    out_text += "\n"
+            
+def test_cont_loopback(ID, byte):
+    out_text = "Sensor Loopback " + ID + " Continuity Detection Running...\n"
     val = 0
     instWriteWithDelay('sens:res:rang ' + RES_RANGE_LOOPBACKS)
     serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
-    serialWriteWithDelay(b'&')                                  # set secondary mux to Loopback 1 mode
+    serialWriteWithDelay(byte)                                  # set secondary mux to Loopback 1 mode
     val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
     out_text += f"{val:,}" + " ohms"
     serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
     instWriteWithDelay('sens:res:rang ' + RES_RANGE_DEFAULT)
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nLoopback one is OPEN!\n"
+        out_text += "\nLoopback " + ID + " is OPEN!\n"
     else:
-        out_text += "\nLoopback one measures resistance!\n"
+        out_text += "\nLoopback " + ID + " is continuous!\n"
     print(out_text)
     return(val, out_text)
 
+def test_cont_loopback_one():
+    (val, out_text) = test_cont_loopback("1", b'&')
+    return (val, out_text)
+
 def test_cont_loopback_two():
-    out_text = "Sensor Loopback Two Continuity Detection Running..."
-    out_text += "\n"
-    val = 0
-    instWriteWithDelay('sens:res:rang ' + RES_RANGE_LOOPBACKS)
-    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
-    serialWriteWithDelay(b'*')                                  # set secondary mux to Loopback 2 mode
-    val = float(instQueryWithDelay('meas:res?'))             # read resistance from the meter
-    out_text += f"{val:,}" + " ohms"
-    serialWriteWithDelay(b'Z')                                  # set rst switches to high-Z and disable muxes
-    instWriteWithDelay('sens:res:rang ' + RES_RANGE_DEFAULT)
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nLoopback two is OPEN!\n"
-    else:
-        out_text += "\nLoopback two measures resistance!\n"
-    print(out_text)
+    (val, out_text) = test_cont_loopback("2", b'*')
     return(val, out_text)
 
 datetime_now = dt.datetime.now()
