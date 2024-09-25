@@ -44,6 +44,7 @@ import time
 import tkinter
 import datetime as dt
 import numpy as np
+from collections import defaultdict
 from pygame import mixer
 from tkinter import filedialog
 
@@ -69,6 +70,14 @@ DELAY_TIME = 0.02 # 0.05
 DELAY_TEST_EQUIPMENT_TIME = 0 # 0.1
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
+
+# Define dictionary linking sensor types to their acceptable capacitance range
+# Sensor type (key) is a string (e.g. "T1")
+# Acceptable capacitance range (value) is a tuple of (low, high) in pF
+CAP_THRESHOLD_MIN_DEFAULT = 5 # pF
+CAP_THRESHOLD_MAX_DEFAULT = 50
+CAP_THRESHOLD_VALS = defaultdict(lambda: (CAP_THRESHOLD_MIN_DEFAULT, CAP_THRESHOLD_MAX_DEFAULT))
+CAP_THRESHOLD_VALS["backplane"] = (-2, 2) # bare backplane without sensors
 
 tkinter.Tk().withdraw()
 path = "G:\\Shared drives\\Sensing\\Testing\\" # old value is C:\Users\tacta\Desktop
@@ -275,10 +284,20 @@ the reason we're using these names is because we're limited to one character + c
 - '(' for writing secondary board to "SHIELD/PZBIAS" output
 '''
 
-def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
+def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, dut_type=array_type, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CAP_COL_TO_PZBIAS"
+    dut_name_full = dut_name_raw + dut_stage_raw
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+    dut_name_segmented = dut_name_raw.split("_")
+    cap_bound_vals = CAP_THRESHOLD_VALS[""] # default cap range value
+    if (len(dut_name_segmented) > 2):
+        cap_bound_vals = CAP_THRESHOLD_VALS[dut_name_segmented[1]] # if this sensor type isn't in the array, uses default value
+    if (dut_type == "Backplanes"):
+        cap_bound_vals = CAP_THRESHOLD_VALS["backplane"]
+    num_below_threshold = 0
+    num_in_threshold = 0
+    num_above_threshold = 0
+    with open(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
         inst.write('sens:cap:rang ' + meas_range)            # limits cap range to the smallest possible value
@@ -336,6 +355,12 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
                 tft_on_meas = float(inst.query('meas:cap?')) # read mux on measurement
                 time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
                 tft_cal_meas = tft_on_meas - tft_off_meas
+                if (tft_cal_meas*1e12 < cap_bound_vals[0]):
+                    num_below_threshold += 1
+                elif (tft_cal_meas*1e12 > cap_bound_vals[1]):
+                    num_above_threshold += 1
+                else:
+                    num_in_threshold += 1
                 out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
                 out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
@@ -344,11 +369,15 @@ def test_cap_col_to_pzbias (dut_name=dut_name_input, meas_range='1e-9', start_ro
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
     out_array_delta = np.delete(out_array_delta, (0), axis=0)
-    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
+    np.savetxt(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
     out_array_on = np.delete(out_array_on, (0), axis=0)
-    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_on.csv", out_array_on, delimiter=",", fmt="%s")
-    print("")
-    return(0, "Ran cap col to PZBIAS test w/ " + str(meas_range) + " F range\n")
+    np.savetxt(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + "_alt_on.csv", out_array_on, delimiter=",", fmt="%s")
+    out_text = "Ran cap col to PZBIAS test w/ " + str(meas_range) + " F range"
+    out_text += "\nNo. of sensors inside bounds: " + str(num_in_threshold)
+    out_text += "\nNo. of sensors below lower threshold of " + str(cap_bound_vals[0]) + "pF: " + str(num_below_threshold)
+    out_text += "\nNo. of sensors above upper threshold of " + str(cap_bound_vals[1]) + "pF: " + str(num_above_threshold) + "\n"
+    print("\n" + out_text)
+    return(0, out_text)
 
 def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CAP_COL_TO_SHIELD"
@@ -1274,7 +1303,7 @@ if (USING_USB_PSU):
 out_string = ""
 loop_one_res = 0
 loop_two_res = 0
-if (array_type_raw in [0, 1]):
+if (array_type_raw in [0, 1]): # Runs loopback check on bare backplanes and sensor arrays not bonded to flex
     print("Press 'q' to skip loopback check...")
     (loop_one_res, loop_two_res) = test_loopback_resistance()
     out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
@@ -1293,23 +1322,23 @@ else:
         file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
         file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
 
-array_types = [1, 3]
-array_type = 1
+array_tft_types = [1, 3]
+tft_type = 1
 while True:
     try:
-        array_type = int(input("Please select array type: '1' for 1T, '3' for 3T: "))
+        tft_type = int(input("Please select array type: '1' for 1T, '3' for 3T: "))
     except ValueError:
         print("Sorry, please select a valid array type")
         continue
-    if (array_type not in array_types):
+    if (tft_type not in array_tft_types):
         print("Sorry, please select a valid array type")
         continue
     else:
         break
-print("Running " + str(array_type) + "T array tests...")
+print("Running " + str(tft_type) + "T array tests...")
 print("\nIf there are shorts, the terminal output (.) means open and (X) means short\n")
 
-if (array_type == 1):
+if (tft_type == 1):
     special_test_state = 0
     test_selection_raw = input("Please hit 'enter' for default (full) 1T test, or\n" +
                                "type '1' to only run cap + TFT cont. tests and skip continuity checks, or\n" +
@@ -1333,7 +1362,7 @@ if (array_type == 1):
         else:
             meas_range_input = '1e-9'
             print("Running cap test with default 1nF range...\n")
-        out_string += "\n" + test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
+        out_string += "\n" + test_cap_col_to_pzbias(dut_id_input, dut_stage_input, array_type, meas_range_input)[1] + "\n"
         # test_cap_col_to_shield(dut_name_input, meas_range_input)
         out_string += test_cont_col_to_pzbias_tfts_on()[1]
     elif (special_test_state == 2):
@@ -1388,12 +1417,12 @@ if (array_type == 1):
             else:
                 meas_range_input = '1e-9'
                 print("Running cap test with default 1nF range...\n")
-            out_string += "\n" + test_cap_col_to_pzbias(dut_name_input, meas_range_input)[1] + "\n"
+            out_string += "\n" + test_cap_col_to_pzbias(dut_id_input, dut_stage_input, array_type, meas_range_input)[1] + "\n"
             #test_cap_col_to_shield(dut_name_input, meas_range_input)
             out_string += test_cont_col_to_pzbias_tfts_on()[1]
 
 # 3T array testing
-elif (array_type == 3):
+elif (tft_type == 3):
     cont_row_to_column = test_cont_row_to_column()
     cont_row_to_pzbias = test_cont_row_to_pzbias()
     cont_row_to_shield = test_cont_row_to_shield()
@@ -1438,7 +1467,7 @@ print("Done testing serial number " + dut_id_input + "!\n")
 datetime_now = dt.datetime.now()
 output_filename = path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_summary.txt"
 out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_name_input + "\n" + 
-             "Array Type: " + str(array_type) + "T\n" + 
+             "Array Type: " + str(tft_type) + "T\n" +
              "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
 
 with open(output_filename, 'w', newline='') as file:
