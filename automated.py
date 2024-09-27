@@ -1203,7 +1203,7 @@ def test_cont_shield_to_pzbias(dut_name=dut_name_input):
         return (1, out_text)
 
 def test_loopback_resistance(num_counts=10, silent=False):
-    inst.write('sens:res:rang 10E3 ')# set resistance measurement range to 10kOhm
+    inst.write('sens:res:rang 10E3')# set resistance measurement range to 10kOhm
     is_pressed = False
     count = 0
     print("")
@@ -1236,6 +1236,7 @@ def test_loopback_resistance(num_counts=10, silent=False):
             is_pressed = True
             print("")
             return (val1, val2)
+    inst.write('sens:res:rang 100E6')# set resistance measurement range to 10MOhm
 
 def test_cont_loopback_one():
     out_text = "Sensor Loopback One Continuity Detection Running..."
