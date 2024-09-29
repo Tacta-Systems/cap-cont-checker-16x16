@@ -162,7 +162,7 @@ print("\nSetup Instructions:\n" +
 
 array_types = {
     0: "Backplanes",
-    1: "Sensor Arrays\\16x16",
+    1: "Sensor Arrays",
     2: "Sensor Modules"
 }
 array_type_raw = 0
