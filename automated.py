@@ -87,6 +87,11 @@ CAP_THRESHOLD_MIN_DEFAULT = 5 # pF
 CAP_THRESHOLD_MAX_DEFAULT = 50
 CAP_THRESHOLD_VALS = defaultdict(lambda: (CAP_THRESHOLD_MIN_DEFAULT, CAP_THRESHOLD_MAX_DEFAULT))
 CAP_THRESHOLD_VALS["backplane"] = (-2, 2) # bare backplane without sensors
+# dictionary with 1-character commands to set secondary mux board into the correct mode for the measurement
+CAP_FN_DICT = {
+    "CAP_COL_TO_PZBIAS": b'W',
+    "CAP_COL_TO_SHIELD": b'Y'
+}
 
 tkinter.Tk().withdraw()
 path = "G:\\Shared drives\\Sensing\\Testing\\" # old value is C:\Users\tacta\Desktop
@@ -303,10 +308,18 @@ def instQueryWithDelay(queryString):
     time.sleep(DELAY_TIME_INST)
     return val
 
-def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, dut_type=array_type, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
-    test_name = "CAP_COL_TO_PZBIAS"
+# test measures capacitance between two specified nodes detailed in the 'test_mode_in' parameters
+# and measures the difference between (row TFT on cap) - (row TFT off cap)
+# and iterates through every combination of row/column
+def test_cap(dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, test_mode_in="CAP_COL_TO_PZBIAS", 
+             dut_type=array_type, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
+    if (test_mode_in not in CAP_FN_DICT):
+        print("ERROR: test mode not defined...")
+        return (-1, "CAP TEST ERROR")
+    test_name = test_mode_in
     dut_name_full = dut_name_raw + dut_stage_raw
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
     dut_name_segmented = dut_name_raw.split("_")
     cap_bound_vals = CAP_THRESHOLD_VALS[""] # default cap range value
     if (len(dut_name_segmented) > 2):
@@ -316,12 +329,13 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
     num_below_threshold = 0
     num_in_threshold = 0
     num_above_threshold = 0
+
     with open(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
         instWriteWithDelay('sens:cap:rang ' + meas_range)
         instQueryWithDelay('meas:cap?')
-        print("Sensor Capacitance Check to PZBIAS Running...")
+        print("Sensor " + test_name + " Check Running...")
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
         out_array_delta[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
@@ -338,23 +352,23 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
 
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                serialWriteWithDelay(b'Z')
-                serialWriteWithDelay(b'W')
-                serialWriteWithDelay(b'R')
-                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))
-                serialWriteWithDelay(b'L')
-                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))
-                serialWriteWithDelay(b'I')
+                serialWriteWithDelay(b'Z')                   # sets all mux switches to high-Z mode
+                serialWriteWithDelay(CAP_FN_DICT[test_name]) # pre-sets the secondary muxes to the right state for cap measurement
+                serialWriteWithDelay(b'R')                   # sets primary mux to row write mode
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8')) # sets row address
+                serialWriteWithDelay(b'L')                   # sets primary mux to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8')) # sets column address
+                serialWriteWithDelay(b'I')                   # sets primary row mux to "binary counter disable mode", which sets all TFT's off (to -8V)
 
                 tft_off_meas = float(instQueryWithDelay('meas:cap?'))
 
-                serialWriteWithDelay(b'Z')
-                serialWriteWithDelay(b'W')
-                serialWriteWithDelay(b'R')
-                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))
-                serialWriteWithDelay(b'L')
-                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))
-                serialWriteWithDelay(b'P')
+                serialWriteWithDelay(b'Z')                   # sets all mux switches to high-Z mode
+                serialWriteWithDelay(CAP_FN_DICT[test_name]) # pre-sets the secondary muxes to the right state for cap measurement
+                serialWriteWithDelay(b'R')                   # sets primary mux to row write mode
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8')) # sets row address
+                serialWriteWithDelay(b'L')                   # sets primary mux to column write mode
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8')) # sets column address
+                serialWriteWithDelay(b'P')                   # sets primary row mux to capacitance check mode
 
                 tft_on_meas = float(instQueryWithDelay('meas:cap?'))
                 tft_cal_meas = tft_on_meas - tft_off_meas
@@ -367,93 +381,18 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
                 out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
                 out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
-            printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
+            printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     serialWriteWithDelay(b'Z')
     out_array_delta = np.delete(out_array_delta, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
     out_array_on = np.delete(out_array_on, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + "_alt_on.csv", out_array_on, delimiter=",", fmt="%s")
-    out_text = "Ran cap col to PZBIAS test w/ " + str(meas_range) + " F range"
+    out_text = "Ran " + test_name + " test w/ " + str(meas_range) + " F range"
     out_text += "\nNo. of sensors inside bounds: " + str(num_in_threshold)
     out_text += "\nNo. of sensors below lower threshold of " + str(cap_bound_vals[0]) + "pF: " + str(num_below_threshold)
     out_text += "\nNo. of sensors above upper threshold of " + str(cap_bound_vals[1]) + "pF: " + str(num_above_threshold) + "\n"
     print("\n" + out_text)
     return(0, out_text)
-
-def test_cap_col_to_shield (dut_name=dut_name_input, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
-    test_name = "CAP_COL_TO_SHIELD"
-    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
-        inst.write('sens:cap:rang ' + meas_range)            # limits cap range to the smallest possible value
-        time.sleep(DELAY_TIME)
-        inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
-        time.sleep(DELAY_TIME)
-        print("Sensor Capacitance Check to SHIELD Running...")
-        printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
-        out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
-        out_array_delta[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
-        for i in range(len(out_array_delta)):
-            out_array_delta[len(out_array_delta)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
-        
-        out_array_on = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
-        out_array_on[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
-        for i in range(len(out_array_on)):
-            out_array_on[len(out_array_on)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
-
-        out_array_delta[1][0] = "Cap TFT On - Cap TFT Off (pF)"
-        out_array_on[1][0] = "Cap TFT On (pF)"
-
-        for row in range(start_row, end_row):
-            for col in range(start_col, end_col):
-                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                              # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'I')                              # "OFF" measurement" - all row switches are held at -8V
-                time.sleep(DELAY_TIME)
-                tft_off_meas = float(inst.query('meas:cap?'))# read mux off measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
-
-                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'Y')                              # set secondary mux board to col/SHIELD mode for cap measurement
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                              # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
-                time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('meas:cap?')) # read mux on measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
-                tft_cal_meas = tft_on_meas - tft_off_meas
-                out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
-                out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
-                writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
-                time.sleep(DELAY_TIME)
-            printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
-    out_array_delta = np.delete(out_array_delta, (0), axis=0)
-    out_array_on = np.delete(out_array_on, (0), axis=0)
-    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
-    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt_on.csv", out_array_on, delimiter=",", fmt="%s")
-    print("")
-    return(0, "Ran cap col to SHIELD test w/ " + str(meas_range) + " F range\n")
 
 def test_cont_row_to_column(dut_name=dut_name_input, start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CONT_ROW_TO_COL"
@@ -1364,8 +1303,8 @@ if (tft_type == 1):
         else:
             meas_range_input = '1e-9'
             print("Running cap test with default 1nF range...\n")
-        out_string += "\n" + test_cap_col_to_pzbias(dut_id_input, dut_stage_input, array_type, meas_range_input)[1] + "\n"
-        # test_cap_col_to_shield(dut_name_input, meas_range_input)
+        out_string += "\n" + test_cap(dut_id_input, dut_stage_input, "CAP_COL_TO_PZBIAS", array_type, meas_range_input)[1]
+        # out_string += "\n" + test_cap(dut_id_input, dut_stage_input, "CAP_COL_TO_SHIELD", array_type, meas_range_input)[1]
         out_string += test_cont_col_to_pzbias_tfts_on()[1]
     elif (special_test_state == 2):
         cont_row_to_column = test_cont_row_to_column()
