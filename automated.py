@@ -66,8 +66,17 @@ ser.rtscts = False                 # disable hardware (RTS/CTS) flow control
 ser.dsrdtr = False                 # disable hardware (DSR/DTR) flow control
 ser.write_timeout = None           # timeout for write -- changed from writeTimeout
 
+# comment this out when done
 DELAY_TIME = 0.02 # 0.05
 DELAY_TEST_EQUIPMENT_TIME = 0 # 0.1
+# end comment
+
+DELAY_TIME_SERIAL = 0.02 # 0.05
+DELAY_TIME_INST = 0 # 0.1
+RES_RANGE_DEFAULT = '100E6'
+RES_RANGE_LOOPBACKS = '10E3'
+CAP_RANGE_DEFAULT = '1E-9'
+
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
 
@@ -114,11 +123,9 @@ inst.read_termination = '\n'
 # Clear buffer and status
 inst.write('*CLS')
 
-# Set measurement ranges           CAP LIMIT SHOULD BE 1E_9
-inst.write('sens:cap:rang 1E-9') # limits cap range to the smallest possible value
-inst.write('sens:res:rang 100E6')# set resistance measurement range to 100 MOhm for 0.7uA test current, per
-                                 # https://download.tek.com/document/SPEC-DMM6500A_April_2018.pdf
-
+# Set measurement ranges
+inst.write('sens:cap:rang ' + CAP_RANGE_DEFAULT) # limits cap range to the smallest possible value
+inst.write('sens:res:rang ' + RES_RANGE_DEFAULT)
 
 for port, desc, hwid in sorted(ports):
     list_of_ports.append(str(port))
@@ -230,7 +237,6 @@ if (array_type == "Sensor Modules"):
         else:
             break
 
-
 dut_name_input = dut_id_input + dut_stage_input
 print("Test data for " + dut_id_input + " will save to path " + path + "\n")
 
@@ -284,6 +290,19 @@ the reason we're using these names is because we're limited to one character + c
 - '(' for writing secondary board to "SHIELD/PZBIAS" output
 '''
 
+def serialWriteWithDelay(byte):
+    ser.write(byte)
+    time.sleep(DELAY_TIME_SERIAL)
+
+def instWriteWithDelay(writeString):
+    inst.write(writeString)
+    time.sleep(DELAY_TIME_INST)
+
+def instQueryWithDelay(queryString):
+    val = inst.query(queryString)
+    time.sleep(DELAY_TIME_INST)
+    return val
+
 def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, dut_type=array_type, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CAP_COL_TO_PZBIAS"
     dut_name_full = dut_name_raw + dut_stage_raw
@@ -300,10 +319,8 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
     with open(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
-        inst.write('sens:cap:rang ' + meas_range)            # limits cap range to the smallest possible value
-        time.sleep(DELAY_TIME)
-        inst.query('meas:cap?')                              # set Keithley mode to capacitance measurement
-        time.sleep(DELAY_TIME)
+        instWriteWithDelay('sens:cap:rang ' + meas_range)
+        instQueryWithDelay('meas:cap?')
         print("Sensor Capacitance Check to PZBIAS Running...")
         printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
         out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
@@ -321,39 +338,25 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
 
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                              # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'I')                              # "OFF" measurement" - all row switches are held at -8V
-                time.sleep(DELAY_TIME)
-                tft_off_meas = float(inst.query('meas:cap?'))# read mux off measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                serialWriteWithDelay(b'Z')
+                serialWriteWithDelay(b'W')
+                serialWriteWithDelay(b'R')
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))
+                serialWriteWithDelay(b'L')
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))
+                serialWriteWithDelay(b'I')
 
-                ser.write(b'Z')                              # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'W')                              # set secondary mux board to col/PZBIAS mode for cap measurement
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                              # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))      # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                              # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))      # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'P')                              # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
-                time.sleep(DELAY_TIME)
-                tft_on_meas = float(inst.query('meas:cap?')) # read mux on measurement
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)        # TODO: see how small we can make this delay
+                tft_off_meas = float(instQueryWithDelay('meas:cap?'))
+
+                serialWriteWithDelay(b'Z')
+                serialWriteWithDelay(b'W')
+                serialWriteWithDelay(b'R')
+                serialWriteWithDelay(bytes(hex(row)[2:], 'utf-8'))
+                serialWriteWithDelay(b'L')
+                serialWriteWithDelay(bytes(hex(col)[2:], 'utf-8'))
+                serialWriteWithDelay(b'P')
+
+                tft_on_meas = float(instQueryWithDelay('meas:cap?'))
                 tft_cal_meas = tft_on_meas - tft_off_meas
                 if (tft_cal_meas*1e12 < cap_bound_vals[0]):
                     num_below_threshold += 1
@@ -364,10 +367,8 @@ def test_cap_col_to_pzbias (dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_i
                 out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
                 out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
-                time.sleep(DELAY_TIME)
             printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                          # set all mux enables + mux channels to OFF
+    serialWriteWithDelay(b'Z')
     out_array_delta = np.delete(out_array_delta, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
     out_array_on = np.delete(out_array_on, (0), axis=0)
