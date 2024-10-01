@@ -55,7 +55,7 @@ PSU_SERIAL_NUMBER  = "583H23104"
 PSU_DELAY_TIME = 3 # seconds
 
 ser = serial.Serial()
-ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.port = "COM3"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
 ser.baudrate = 115200
 ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
 ser.parity = serial.PARITY_NONE    # set parity check: no parity
@@ -1178,8 +1178,8 @@ def test_loopback_resistance(num_counts=10, silent=False):
         if (keyboard.is_pressed('q') or count > num_counts):
             is_pressed = True
             print("")
+            inst.write('sens:res:rang 100E6')# set resistance measurement range to 10MOhm
             return (val1, val2)
-    inst.write('sens:res:rang 100E6')# set resistance measurement range to 10MOhm
 
 def test_cont_loopback_one():
     out_text = "Sensor Loopback One Continuity Detection Running..."
