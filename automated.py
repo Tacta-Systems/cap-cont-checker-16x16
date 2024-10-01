@@ -66,7 +66,7 @@ ser.rtscts = False                 # disable hardware (RTS/CTS) flow control
 ser.dsrdtr = False                 # disable hardware (DSR/DTR) flow control
 ser.write_timeout = None           # timeout for write -- changed from writeTimeout
 
-# comment this out when done
+# comment this out after all resistance checks have been fully parametrized
 DELAY_TIME = 0.02 # 0.05
 DELAY_TEST_EQUIPMENT_TIME = 0 # 0.1
 # end comment
@@ -392,7 +392,7 @@ def test_cap(dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, test_mode
     out_text += "\nNo. of sensors below lower threshold of " + str(cap_bound_vals[0]) + "pF: " + str(num_below_threshold)
     out_text += "\nNo. of sensors above upper threshold of " + str(cap_bound_vals[1]) + "pF: " + str(num_above_threshold) + "\n"
     print("\n" + out_text)
-    return(0, out_text)
+    return(0, out_text + "\n")
 
 def test_cont_row_to_column(dut_name=dut_name_input, start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CONT_ROW_TO_COL"
