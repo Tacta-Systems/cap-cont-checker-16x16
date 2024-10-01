@@ -129,8 +129,11 @@ inst.read_termination = '\n'
 inst.write('*CLS')
 
 # Set measurement ranges
+inst.write('sens:res:rang ' + RES_RANGE_DEFAULT) # sets resistance range to the default specified value
 inst.write('sens:cap:rang ' + CAP_RANGE_DEFAULT) # limits cap range to the smallest possible value
-inst.write('sens:res:rang ' + RES_RANGE_DEFAULT)
+inst.write('sens:cap:aver:tcon rep') # sets cap averaging to repeating (vs. moving) -- see Keithley 2000 user manual
+inst.write('sens:cap:aver:coun 10')  # sets averaging to 10 measurements per output
+inst.write('sens:cap:aver on')       # enables cap averaging
 
 for port, desc, hwid in sorted(ports):
     list_of_ports.append(str(port))
@@ -1358,8 +1361,8 @@ if (tft_type == 1):
             else:
                 meas_range_input = '1e-9'
                 print("Running cap test with default 1nF range...\n")
-            out_string += "\n" + test_cap_col_to_pzbias(dut_id_input, dut_stage_input, array_type, meas_range_input)[1] + "\n"
-            #test_cap_col_to_shield(dut_name_input, meas_range_input)
+            out_string += "\n" + test_cap(dut_id_input, dut_stage_input, "CAP_COL_TO_PZBIAS", array_type, meas_range_input)[1] + "\n"
+            # test_cap(dut_id_input, dut_stage_input, "CAP_COL_TO_SHIELD", array_type, meas_range_input)
             out_string += test_cont_col_to_pzbias_tfts_on()[1]
 
 # 3T array testing
