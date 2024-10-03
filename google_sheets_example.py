@@ -13,7 +13,8 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 # Spreadsheet ID
 SPREADSHEET_ID = "1U0fXZTtxtd9mQf37cgzLy9CH4UH5T_lKMpFjCBX9qVs"
-SHEET_NAME = "Test_Data"
+ID_SHEET_NAME = "Test_Data"
+OUT_SHEET_NAME = "Sheet1"
 
 def main():
   array_id = input("Array ID please: ")
@@ -38,42 +39,38 @@ def main():
 
   try:
     service = build("sheets", "v4", credentials=creds)
-    '''
-    # Get the current timestamp in the format YYYY-MM-DD HH:MM:SS
-    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    # Generate a serial number (replace with your actual logic)
-    serial_number = random.randint(1000, 9999)
-
-    # Simulate a test result
-    test_result = random.choice(['PASS', 'FAIL'])
-
-    # The data to append (timestamp, serial number, test result)
-    new_row = [timestamp, serial_number, test_result]
-    '''
-    # Define the range (A1 notation) to append the data at the end of the sheet
-    range_name = f'{SHEET_NAME}!O:Q'
-    '''
-    # Prepare the request body with the values to append
-    body = {
-        'values': [new_row]
-    }
-    
-    # Call the API to append the new row
-    result = service.spreadsheets().values().append(
-        spreadsheetId=SPREADSHEET_ID,
-        range=range_name,
-        valueInputOption='RAW',
-        insertDataOption='INSERT_ROWS',
-        body=body
-    ).execute()
-    '''
     sheet = service.spreadsheets()
-    result = (
+    # Define the range (A1 notation) to append the data at the end of the sheet
+    range_name_dieid = f'{ID_SHEET_NAME}!O:O'
+    range_name_tfttype = f'{ID_SHEET_NAME}!Q:Q'
+    range_name_out = f'{OUT_SHEET_NAME}!A:E'
+
+    result_dieid = (
       sheet.values()
-      .get(spreadsheetId=SPREADSHEET_ID, range=range_name)
+      .get(spreadsheetId=SPREADSHEET_ID, range=range_name_dieid)
       .execute()
     )
+    result_tfttype = (
+      sheet.values()
+      .get(spreadsheetId=SPREADSHEET_ID, range=range_name_tfttype)
+      .execute()
+    )
+    values_dieid = result_dieid.get("values", [])
+    values_tfttype = result_tfttype.get("values", [])
+
+    found_array = False
+    i = 0
+    tft_type="INVALID"
+    for i in range(len(values_dieid)):
+      if (len(values_dieid[i]) > 0):
+        if (values_dieid[i][0] == array_id):
+          print("Found at index " + str(i))
+          found_array = True
+          tft_type = values_tfttype[i][0]
+          break
+    if (found_array):
+      print(tft_type)
+    '''
     values = result.get("values", [])
     found_array = False
     for row in values:
@@ -84,6 +81,28 @@ def main():
           found_array = True
     if not found_array:
       print("Array not found")
+    '''
+    # Get the current timestamp in the format YYYY-MM-DD HH:MM:SS
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # Generate a serial number (replace with your actual logic)
+    serial_number = array_id
+    # The data to append (timestamp, serial number, tft type, test result)
+    new_row = [timestamp, serial_number, tft_type]
+
+    # Prepare the request body with the values to append
+    body = {
+        'values': [new_row]
+    }
+
+    # Call the API to append the new row
+    result = service.spreadsheets().values().append(
+        spreadsheetId=SPREADSHEET_ID,
+        range=range_name_out,
+        valueInputOption='RAW',
+        insertDataOption='INSERT_ROWS',
+        body=body
+    ).execute()
+
     #print(f"Appended new row: {new_row}")
     #print(f"Update result: {result}")
   except HttpError as err:
