@@ -70,18 +70,7 @@ def main():
           break
     if (found_array):
       print(tft_type)
-    '''
-    values = result.get("values", [])
-    found_array = False
-    for row in values:
-      if (len(row) > 2):
-        if (row[0] == array_id):
-          row_truncated = row[2].replace('FS-', '').split('-')[0]
-          print(row_truncated)
-          found_array = True
-    if not found_array:
-      print("Array not found")
-    '''
+
     # Get the current timestamp in the format YYYY-MM-DD HH:MM:SS
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     # Generate a serial number (replace with your actual logic)
