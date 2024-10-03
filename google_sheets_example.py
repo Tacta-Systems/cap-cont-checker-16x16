@@ -13,9 +13,10 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 # Spreadsheet ID
 SPREADSHEET_ID = "1U0fXZTtxtd9mQf37cgzLy9CH4UH5T_lKMpFjCBX9qVs"
-SHEET_NAME = "Sheet1"
+SHEET_NAME = "Test_Data"
 
 def main():
+  array_id = input("Array ID please: ")
   creds = None
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
@@ -37,7 +38,7 @@ def main():
 
   try:
     service = build("sheets", "v4", credentials=creds)
-
+    '''
     # Get the current timestamp in the format YYYY-MM-DD HH:MM:SS
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -49,15 +50,15 @@ def main():
 
     # The data to append (timestamp, serial number, test result)
     new_row = [timestamp, serial_number, test_result]
-
+    '''
     # Define the range (A1 notation) to append the data at the end of the sheet
-    range_name = f'{SHEET_NAME}!A:C'
-
+    range_name = f'{SHEET_NAME}!O:Q'
+    '''
     # Prepare the request body with the values to append
     body = {
         'values': [new_row]
     }
-
+    
     # Call the API to append the new row
     result = service.spreadsheets().values().append(
         spreadsheetId=SPREADSHEET_ID,
@@ -66,9 +67,25 @@ def main():
         insertDataOption='INSERT_ROWS',
         body=body
     ).execute()
-
-    print(f"Appended new row: {new_row}")
-    print(f"Update result: {result}")
+    '''
+    sheet = service.spreadsheets()
+    result = (
+      sheet.values()
+      .get(spreadsheetId=SPREADSHEET_ID, range=range_name)
+      .execute()
+    )
+    values = result.get("values", [])
+    found_array = False
+    for row in values:
+      if (len(row) > 2):
+        if (row[0] == array_id):
+          row_truncated = row[2].replace('FS-', '').split('-')[0]
+          print(row_truncated)
+          found_array = True
+    if not found_array:
+      print("Array not found")
+    #print(f"Appended new row: {new_row}")
+    #print(f"Update result: {result}")
   except HttpError as err:
     print(err)
 
