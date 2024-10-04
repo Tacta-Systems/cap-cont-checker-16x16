@@ -900,11 +900,11 @@ if (tft_type == 1):
         out_string += test_cont_col_to_pzbias_tfts_on()[1]
     elif (special_test_state == 2):
         cont_row_to_column = test_cont_row_to_column()
-        cont_row_to_pzbias = test_cont_row_to_pzbias()
-        cont_col_to_pzbias = test_cont_col_to_pzbias()
-        cont_row_to_shield = test_cont_row_to_shield()
-        cont_col_to_shield = test_cont_col_to_shield()
-        cont_shield_to_pzbias = test_cont_shield_to_pzbias()
+        cont_row_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_PZBIAS", 0, 16)
+        cont_col_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_COL_TO_PZBIAS", 0, 16)
+        cont_row_to_shield = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_SHIELD", 0, 16)
+        cont_col_to_shield = test_cont_one_dim(dut_name_input, "CONT_COL_TO_SHIELD", 0, 16)
+        cont_shield_to_pzbias = test_cont_node(dut_name_input, "CONT_SHIELD_TO_PZBIAS")
 
         out_string += cont_row_to_column[1] + "\n"
         out_string += cont_row_to_pzbias[1] + "\n"
