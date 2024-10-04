@@ -108,6 +108,13 @@ CONT_DICT_ONE_DIM = {
     "CONT_RST_TO_SHIELD": (b'N', b'T')
 }
 
+CONT_DICT_NODE = {
+    "CONT_VDD_TO_SHIELD":    b'@',
+    "CONT_VRST_TO_SHIELD":   b'%',
+    "CONT_VDD_TO_PZBIAS":    b'#',
+    "CONT_VRST_TO_PZBIAS":   b'^',
+    "CONT_SHIELD_TO_PZBIAS": b'('
+}
 tkinter.Tk().withdraw()
 path = "G:\\Shared drives\\Sensing\\Testing\\" # old value is C:\Users\tacta\Desktop
 # print("Please select the directory to output data to:")
@@ -416,7 +423,7 @@ def test_cont_one_dim(dut_name=dut_name_input, test_id="", start_ind=0, end_ind=
     test_name = test_id.upper()
     primary_mux_state = test_name.split("_")[1].capitalize()
     if (test_name not in CONT_DICT_ONE_DIM):
-        out_text = "ERROR: Test ID " + test_id + " not valid...\n"
+        out_text = "ERROR: 1D intersection resistance check " + test_name + " not valid...\n"
         print(out_text)
         return (-1, out_text)
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -462,6 +469,40 @@ def test_cont_one_dim(dut_name=dut_name_input, test_id="", start_ind=0, end_ind=
         out_text += summary_text + "\n"
     print("")
     return(num_shorts, out_text)
+
+def test_cont_node(dut_name=dut_name_input, test_id=""):
+    test_name = test_id.upper()
+    if (test_name not in CONT_DICT_NODE):
+        out_text = "ERROR: Node resistance check " + test_name + " not valid...\n"
+        print(out_text)
+        return (-1, out_text)
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    out_text = "Sensor " + test_name + " Continuity Detection Running..."
+    out_text += "\n"
+    val = 0
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        file.write(test_name.lower() + " (ohms)\n")
+        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+        time.sleep(DELAY_TIME)
+        ser.write(CONT_DICT_NODE[test_id])               # set secondary mux to mode specified in input
+        time.sleep(DELAY_TIME)
+        ser.write(b'O')                                  # enable tester outputs
+        time.sleep(DELAY_TIME)
+        val = float(inst.query('meas:res?'))             # read resistance from the meter
+        file.write(str(val))
+        out_text += f"{val:,}"  + " ohms"
+        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+        file.close()
+    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
+    time.sleep(DELAY_TIME)
+    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+        out_text += "\n" + test_name + " does not have shorts\n"
+        print(out_text)
+        return(0, out_text)
+    else:
+        out_text += "\n" + test_name + " has shorts\n"
+        print(out_text)
+        return (1, out_text)
 
 def test_cont_row_to_column(dut_name=dut_name_input, start_row=0, start_col=0, end_row=16, end_col=16):
     test_name = "CONT_ROW_TO_COL"
@@ -693,156 +734,6 @@ def test_cont_rst_to_column(dut_name=dut_name_input, start_rst=0, start_col=0, e
     print("")
     return(num_shorts, out_text)
 
-def test_cont_vdd_to_shield(dut_name=dut_name_input):
-    test_name = "CONT_VDD_TO_SHIELD"
-    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    out_text = "Sensor Vdd to Shield Continuity Detection Running..."
-    out_text += "\n"
-    val = 0
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
-        file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'@')                                  # set secondary mux to vdd/SHIELD mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
-        file.write(str(val))
-        out_text += f"{val:,}"  + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-        file.close()
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nNo short between Vdd and SHIELD\n"
-        print(out_text)
-        return(0, out_text)
-    else:
-        out_text += "\nShort between Vdd and SHIELD\n"
-        print(out_text)
-        return (1, out_text)
-
-def test_cont_vrst_to_shield(dut_name=dut_name_input):
-    test_name = "CONT_VRST_TO_SHIELD"
-    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    out_text = "Sensor Vrst to Shield Continuity Detection Running..."
-    out_text += "\n"
-    val = 0
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
-        file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'%')                                  # set secondary mux to Vrst/SHIELD mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
-        file.write(str(val))
-        out_text += f"{val:,}" + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-        file.close()
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nNo short between Vrst and SHIELD\n"
-        print(out_text)
-        return(0, out_text)
-    else:
-        out_text += "\nShort between Vrst and SHIELD\n"
-        print(out_text)
-        return (1, out_text)
-
-def test_cont_vdd_to_pzbias(dut_name=dut_name_input):
-    test_name = "CONT_VDD_TO_PZBIAS"
-    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    out_text = "Sensor Vdd to PZBIAS Continuity Detection Running..."
-    out_text += "\n"
-    val = 0
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
-        file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'#')                                  # set secondary mux to vdd/PZBIAS mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
-        file.write(str(val))
-        out_text += f"{val:,}" + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-        file.close()
-    ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME)
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nNo short between Vdd and PZBIAS\n"
-        print(out_text)
-        return(0, out_text)
-    else:
-        out_text += "\nShort between Vdd and PZBIAS\n"
-        print(out_text)
-        return (1, out_text)
-
-def test_cont_vrst_to_pzbias(dut_name=dut_name_input):
-    test_name = "CONT_VRST_TO_PZBIAS"
-    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    out_text = "Sensor Vrst to PZBIAS Continuity Detection Running..."
-    out_text += "\n"
-    val = 0
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
-        file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'^')                                  # set secondary mux to Vrst/SHIELD mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
-        file.write(str(val))
-        out_text += f"{val:,}" + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-        file.close()
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nNo short between Vrst and SHIELD\n"
-        print(out_text)
-        return(0, out_text)
-    else:
-        out_text += "\nShort between Vrst and SHIELD\n"
-        print(out_text)
-        return (1, out_text)
-
-def test_cont_shield_to_pzbias(dut_name=dut_name_input):
-    test_name = "CONT_SHIELD_TO_PZBIAS"
-    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    out_text = "Sensor Shield to PZBIAS Continuity Detection Running..."
-    out_text += "\n"
-    val = 0
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
-        file.write(test_name.lower() + " (ohms)\n")
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-        ser.write(b'(')                                  # set secondary mux to SHIELD/PZBIAS mode
-        time.sleep(DELAY_TIME)
-        ser.write(b'O')                                  # enable tester outputs
-        time.sleep(DELAY_TIME)
-        val = float(inst.query('meas:res?'))             # read resistance from the meter
-        file.write(str(val))
-        out_text += f"{val:,}" + " ohms"
-        time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-        file.close()
-        ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-        time.sleep(DELAY_TIME)
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nNo short between SHIELD and PZBIAS\n"
-        print(out_text)
-        return(0, out_text)
-    else:
-        out_text += "\nShort between SHIELD and PZBIAS\n"
-        print(out_text)
-        return (1, out_text)
-
 def test_loopback_resistance(num_counts=10, silent=False):
     inst.write('sens:res:rang 10E3')# set resistance measurement range to 10kOhm
     is_pressed = False
@@ -1028,7 +919,7 @@ if (tft_type == 1):
         cont_col_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_COL_TO_PZBIAS", 0, 16)
         cont_row_to_shield = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_SHIELD", 0, 16)
         cont_col_to_shield = test_cont_one_dim(dut_name_input, "CONT_COL_TO_SHIELD", 0, 16)
-        cont_shield_to_pzbias = test_cont_shield_to_pzbias()
+        cont_shield_to_pzbias = test_cont_node(dut_name_input, "CONT_SHIELD_TO_PZBIAS")
 
         out_string += cont_row_to_column[1] + "\n"
         out_string += cont_row_to_pzbias[1] + "\n"
@@ -1074,12 +965,12 @@ elif (tft_type == 3):
     cont_rst_to_shield = test_cont_one_dim(dut_name_input, "CONT_RST_TO_SHIELD", 0, 16)
     cont_rst_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_RST_TO_PZBIAS", 0, 16)
     cont_vdd_to_column = test_cont_one_dim(dut_name_input, "CONT_COL_TO_VDD", 0, 16)
-    cont_vdd_to_shield = test_cont_vdd_to_shield()
-    cont_vdd_to_pzbias = test_cont_vdd_to_pzbias()
+    cont_vdd_to_shield = test_cont_node(dut_name_input, "CONT_VDD_TO_SHIELD")
+    cont_vdd_to_pzbias = test_cont_node(dut_name_input, "CONT_VDD_TO_PZBIAS")
     cont_vrst_to_column = test_cont_one_dim(dut_name_input, "CONT_COL_TO_VRST", 0, 16)
-    cont_vrst_to_shield = test_cont_vrst_to_shield()
-    cont_vrst_to_pzbias = test_cont_vrst_to_pzbias()
-    cont_shield_to_pzbias = test_cont_shield_to_pzbias()
+    cont_vrst_to_shield = test_cont_node(dut_name_input, "CONT_VRST_TO_SHIELD")
+    cont_vrst_to_pzbias = test_cont_node(dut_name_input, "CONT_VRST_TO_PZBIAS")
+    cont_shield_to_pzbias = test_cont_node(dut_name_input, "CONT_SHIELD_TO_PZBIAS")
 
     out_string += cont_row_to_column[1] + "\n"
     out_string += cont_row_to_pzbias[1] + "\n"
