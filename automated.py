@@ -54,18 +54,6 @@ VISA_SERIAL_NUMBER = "04611761"
 PSU_SERIAL_NUMBER  = "583H23104"
 PSU_DELAY_TIME = 3 # seconds
 
-ser = serial.Serial()
-ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
-ser.baudrate = 115200
-ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
-ser.parity = serial.PARITY_NONE    # set parity check: no parity
-ser.stopbits = serial.STOPBITS_ONE # number of stop bits
-ser.timeout = 1                    # non-block read
-ser.xonxoff = False                # disable software flow control
-ser.rtscts = False                 # disable hardware (RTS/CTS) flow control
-ser.dsrdtr = False                 # disable hardware (DSR/DTR) flow control
-ser.write_timeout = None           # timeout for write -- changed from writeTimeout
-
 DELAY_TIME_SERIAL = 0.02 # 0.05
 DELAY_TIME_INST = 0 # 0.1
 RES_RANGE_DEFAULT = '100E6'
@@ -132,47 +120,26 @@ path = "G:\\Shared drives\\Sensing\\Testing\\" # old value is C:\Users\tacta\Des
 # print("Please select the directory to output data to:")
 # path = filedialog.askdirectory()
 
-mixer.init()
-loop1 = mixer.Sound("loop1.wav")
-loop2 = mixer.Sound("loop2.wav")
-both_loops = mixer.Sound("both_loops.wav")
-
-# Connect to Keithley multimeter
-rm = pyvisa.ResourceManager()
-print("Listing available VISA resources below:")
-print(rm.list_resources())
-try:
-    inst = rm.open_resource('USB0::0x05E6::0x6500::' + VISA_SERIAL_NUMBER + '::INSTR')
-    print("Connected to VISA multimeter!")
-    if (USING_USB_PSU):
-        psu = rm.open_resource('USB0::0x3121::0x0002::' + PSU_SERIAL_NUMBER + '::INSTR')
-        print("Connected to VISA PSU!")
-except Exception as e:
-    print(f"VISA connection error: {e}")
-    sys.exit(0)
+# connect to Arduino via serial
+ser = serial.Serial()
+ser.port = "COM5"                  # COM3 hardcoded this as default value (on Maxwell's laptop) but can also prompt for the COM port
+ser.baudrate = 115200
+ser.bytesize = serial.EIGHTBITS    # number of bits per bytes
+ser.parity = serial.PARITY_NONE    # set parity check: no parity
+ser.stopbits = serial.STOPBITS_ONE # number of stop bits
+ser.timeout = 1                    # non-block read
+ser.xonxoff = False                # disable software flow control
+ser.rtscts = False                 # disable hardware (RTS/CTS) flow control
+ser.dsrdtr = False                 # disable hardware (DSR/DTR) flow control
+ser.write_timeout = None           # timeout for write -- changed from writeTimeout
 
 # List serial ports
 print("\nListing available serial ports below:")
 ports = serial.tools.list_ports.comports()
 list_of_ports = []
-
-# Have pyvisa handle line termination
-inst.read_termination = '\n'
-
-# Clear buffer and status
-inst.write('*CLS')
-
-# Set measurement ranges
-inst.write('sens:res:rang ' + RES_RANGE_DEFAULT) # sets resistance range to the default specified value
-inst.write('sens:cap:rang ' + CAP_RANGE_DEFAULT) # limits cap range to the smallest possible value
-inst.write('sens:cap:aver:tcon rep') # sets cap averaging to repeating (vs. moving) -- see Keithley 2000 user manual
-inst.write('sens:cap:aver:coun 10')  # sets averaging to 10 measurements per output
-inst.write('sens:cap:aver on')       # enables cap averaging
-
 for port, desc, hwid in sorted(ports):
     list_of_ports.append(str(port))
     print("{}: {} [{}]".format(port, desc, hwid))
-
 if (len(list_of_ports)) == 0:
     print("ERROR: No serial ports/Arduinos detected. Exiting in 5 seconds...")
     time.sleep(5)
@@ -180,7 +147,6 @@ if (len(list_of_ports)) == 0:
 
 # Query user for the Arduino COM port, will run until valid state given
 # Can comment out this section if running on one computer
-
 '''
 while True:
     try:
@@ -202,6 +168,39 @@ try:
 except Exception as e:
     print(f"Error opening serial port: {e}")
     sys.exit(0)
+
+# initialize sounds for loopback continuity check
+mixer.init()
+loop1 = mixer.Sound("loop1.wav")
+loop2 = mixer.Sound("loop2.wav")
+both_loops = mixer.Sound("both_loops.wav")
+
+# Connect to Keithley multimeter and PSU if applicable
+rm = pyvisa.ResourceManager()
+print("Listing available VISA resources below:")
+print(rm.list_resources())
+try:
+    inst = rm.open_resource('USB0::0x05E6::0x6500::' + VISA_SERIAL_NUMBER + '::INSTR')
+    print("Connected to VISA multimeter!")
+    if (USING_USB_PSU):
+        psu = rm.open_resource('USB0::0x3121::0x0002::' + PSU_SERIAL_NUMBER + '::INSTR')
+        print("Connected to VISA PSU!")
+except Exception as e:
+    print(f"VISA connection error: {e}")
+    sys.exit(0)
+
+# Have pyvisa handle line termination
+inst.read_termination = '\n'
+
+# Clear buffer and status
+inst.write('*CLS')
+
+# Set measurement ranges
+inst.write('sens:res:rang ' + RES_RANGE_DEFAULT) # sets resistance range to the default specified value
+inst.write('sens:cap:rang ' + CAP_RANGE_DEFAULT) # limits cap range to the smallest possible value
+inst.write('sens:cap:aver:tcon rep') # sets cap averaging to repeating (vs. moving) -- see Keithley 2000 user manual
+inst.write('sens:cap:aver:coun 10')  # sets averaging to 10 measurements per output
+inst.write('sens:cap:aver on')       # enables cap averaging
 
 print("\nSetup Instructions:\n" +
       "- If new array, probe loopbacks to ensure connection\n" +
