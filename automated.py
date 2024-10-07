@@ -87,10 +87,25 @@ CAP_THRESHOLD_MIN_DEFAULT = 5 # pF
 CAP_THRESHOLD_MAX_DEFAULT = 50
 CAP_THRESHOLD_VALS = defaultdict(lambda: (CAP_THRESHOLD_MIN_DEFAULT, CAP_THRESHOLD_MAX_DEFAULT))
 CAP_THRESHOLD_VALS["backplane"] = (-2, 2) # bare backplane without sensors
-# dictionary with 1-character commands to set secondary mux board into the correct mode for the measurement
+
+# For two dimensional capacitance checks (e.g. column to PZBIAS),
+# the tester iterates using two nested 'for' loops. In the outside loop, it iterates through all the rows,
+# toggling them to +15V (on) or -8V (off). In the inside loop, it iterates through all of the sweeped nodes
+# (e.g. column) and measures capacitance to the fixed node (e.g. PZBIAS).
+# Dictionary with 1-character commands to set secondary mux board into the correct mode for the measurement
 CAP_FN_DICT = {
     "CAP_COL_TO_PZBIAS": b'W',
     "CAP_COL_TO_SHIELD": b'Y'
+}
+
+# For two dimensional continuity checks (e.g. row to column, rst to column),
+# dictionary with 1-character commands to set board into appropriate state, using tuples
+# First element of tuple sets the secondary mux into the appropriate state
+# Second element of tuple sets the primary mux into the first dimension (e.g. row) writing mode
+# Third element of tuple sets the primary mux into the second dimension (e.g. col) writing mode
+CONT_DICT_TWO_DIM = {
+    "CONT_ROW_TO_COL": (b'U', b'R', b'L'),
+    "CONT_RST_TO_COL": (b'Q', b'T', b'L')
 }
 
 # For one dimensional continuity checks (e.g. row to shield, col to PZBIAS, etc.),
@@ -108,6 +123,8 @@ CONT_DICT_ONE_DIM = {
     "CONT_RST_TO_SHIELD": (b'N', b'T')
 }
 
+# For node continuity checks (e.g. vdd to shield),
+# dictionary with 1-character commands to set secondary mux board into appropriate state
 CONT_DICT_NODE = {
     "CONT_VDD_TO_SHIELD":    b'@',
     "CONT_VRST_TO_SHIELD":   b'%',
@@ -336,7 +353,7 @@ def instQueryWithDelay(queryString):
 # test measures capacitance between two specified nodes detailed in the 'test_mode_in' parameters
 # and measures the difference between (row TFT on cap) - (row TFT off cap)
 # and iterates through every combination of row/column
-def test_cap(dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, test_mode_in="CAP_COL_TO_PZBIAS", 
+def test_cap(dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, test_mode_in="", 
              dut_type=array_type, meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
     if (test_mode_in not in CAP_FN_DICT):
         print("ERROR: test mode not defined...")
@@ -419,6 +436,80 @@ def test_cap(dut_name_raw=dut_id_input, dut_stage_raw=dut_stage_input, test_mode
     print("\n" + out_text)
     return(0, out_text + "\n")
 
+def test_cont_two_dim(dut_name=dut_name_input, test_id="", start_dim1=0, start_dim2=0, end_dim1=16, end_dim2=16):
+    test_name = test_id.upper()
+    if (test_name not in CONT_DICT_TWO_DIM):
+        out_text = "ERROR: 2D node resistance check " + test_name + " not valid...\n"
+        print(out_text)
+        return (-1, out_text)
+    dim1_name = test_name.split('_')[1].capitalize()
+    dim2_name = test_name.split('_')[3].capitalize()
+    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    out_array = np.zeros((18, 17), dtype='U64')              # create string-typed numpy array
+    out_array[1] = [dim2_name + str(i) for i in range(0, 17)]  # set cols of output array to be "dim2_1...dim2_16"
+    for i in range(len(out_array)):
+        out_array[len(out_array)-1-i][0] = dim1_name + str(i+1)# set rows of output array to be "dim1_1...dim1_16"
+    out_array[1][0] = "Resistance (ohm)"
+    num_shorts = 0
+    out_text = ""
+    inst.query('meas:res?')
+    time.sleep(DELAY_TIME)
+    out_text += "Sensor " + dim1_name + " to " + dim2_name + " Continuity Detection Running..."
+    print(out_text)
+    out_text += "\n"
+    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([dim1_name + " Index", dim2_name + " Index", dim1_name + " Res. to " + dim2_name + " (ohm)"])
+        printProgressBar(0, 16, suffix = dim1_name + " 0/16", length = 16)
+        time.sleep(DELAY_TIME)
+        for dim1_cnt in range(start_dim1, end_dim1):
+            for dim2_cnt in range(start_dim2, end_dim2):
+                time.sleep(DELAY_TIME)
+                ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
+                time.sleep(DELAY_TIME)
+                ser.write(CONT_DICT_TWO_DIM[test_name][0])       # set secondary mux to specified input mode
+                time.sleep(DELAY_TIME)
+                ser.write(CONT_DICT_TWO_DIM[test_name][1])       # set mode to dim1 write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(dim1_cnt)[2:], 'utf-8'))     # write dim1 index
+                time.sleep(DELAY_TIME)
+                ser.write(CONT_DICT_TWO_DIM[test_name][2])       # set mode to dim2 write mode
+                time.sleep(DELAY_TIME)
+                ser.write(bytes(hex(dim2_cnt)[2:], 'utf-8'))     # write dim2 index
+                time.sleep(DELAY_TIME)
+                ser.write(b'O')                                  # set mode to continuity check
+                time.sleep(DELAY_TIME)
+                val = float(inst.query('meas:res?'))             # read resistance measurement
+                out_array[(16-dim1_cnt)+1][dim2_cnt+1] = val
+                time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
+                if (val < RES_SHORT_THRESHOLD_ROWCOL):
+                    num_shorts += 1
+                writer.writerow([str(dim1_cnt+1), str(dim2_cnt+1), val])
+            printProgressBar(dim1_cnt+1, 16, suffix = dim1_name + " " + str(dim1_cnt+1) + "/16", length = 16)
+    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
+    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
+    out_array = np.delete(out_array, (0), axis=0)
+    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
+    num_shorts_text = "There were " + str(num_shorts) + " " + dim1_name + "/" + dim2_name + " short(s)"
+    print(num_shorts_text)
+    out_text += num_shorts_text + "\n"
+    out_array = np.delete(out_array, (0), axis=1)
+    out_array = out_array[1:]
+    if (num_shorts > 0):
+        for dim1_cnt in range(out_array.shape[0]):
+            for dim2_cnt in range(out_array.shape[1]):
+                if (float(out_array[dim1_cnt][dim2_cnt]) > RES_SHORT_THRESHOLD_ROWCOL):
+                    print(".", end="")
+                    out_text += "."
+                else:
+                    print("X", end="")
+                    out_text += "X"
+            print("")
+            out_text += "\n"
+    print("")
+    return(num_shorts, out_text)
+
 def test_cont_one_dim(dut_name=dut_name_input, test_id="", start_ind=0, end_ind=16):
     test_name = test_id.upper()
     primary_mux_state = test_name.split("_")[1].capitalize()
@@ -473,7 +564,7 @@ def test_cont_one_dim(dut_name=dut_name_input, test_id="", start_ind=0, end_ind=
 def test_cont_node(dut_name=dut_name_input, test_id=""):
     test_name = test_id.upper()
     if (test_name not in CONT_DICT_NODE):
-        out_text = "ERROR: Node resistance check " + test_name + " not valid...\n"
+        out_text = "ERROR: 1D Node resistance check " + test_name + " not valid...\n"
         print(out_text)
         return (-1, out_text)
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -503,77 +594,6 @@ def test_cont_node(dut_name=dut_name_input, test_id=""):
         out_text += "\n" + test_name + " has shorts\n"
         print(out_text)
         return (1, out_text)
-
-def test_cont_row_to_column(dut_name=dut_name_input, start_row=0, start_col=0, end_row=16, end_col=16):
-    test_name = "CONT_ROW_TO_COL"
-    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-    out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
-    out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
-    for i in range(len(out_array)):
-        out_array[len(out_array)-1-i][0] = "R" + str(i+1)# set rows of output array to be "R1"..."R16"
-    # out_array[0][0] = "Continuity Detection Row to Column"
-    # out_array[0][1] = dut_name
-    # out_array[0][2] = dt.datetime.now()
-    out_array[1][0] = "Resistance (ohm)"
-    num_shorts = 0
-    out_text = ""
-    inst.query('meas:res?')
-    time.sleep(DELAY_TIME)
-    out_text += "Sensor Row to Col Continuity Detection Running..."
-    print(out_text)
-    out_text += "\n"
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Row Index", "Column Index", "Row Res. to Col. (ohm)"])
-        printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
-        time.sleep(DELAY_TIME)
-        for row in range(start_row, end_row):
-            for col in range(start_col, end_col):
-                time.sleep(DELAY_TIME)
-                ser.write(b'Z')                                  # set row switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'U')                                  # set secondary mux to row/col mode
-                time.sleep(DELAY_TIME)
-                ser.write(b'R')                                  # set mode to row write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(row)[2:], 'utf-8'))          # write row index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                                  # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))          # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'O')                                  # set mode to continuity check
-                time.sleep(DELAY_TIME)
-                val = float(inst.query('meas:res?'))             # read resistance measurement
-                out_array[(16-row)+1][col+1] = val
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
-                if (val < RES_SHORT_THRESHOLD_ROWCOL):
-                    num_shorts += 1
-                writer.writerow([str(row+1), str(col+1), val])
-            printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
-    out_array = np.delete(out_array, (0), axis=0)
-    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
-    num_shorts_text = "There were " + str(num_shorts) + " row/col short(s)"
-    print(num_shorts_text)
-    out_text += num_shorts_text + "\n"
-    out_array = np.delete(out_array, (0), axis=1)
-    out_array = out_array[1:]
-    if (num_shorts > 0):
-        for row in range(out_array.shape[0]):
-            for col in range(out_array.shape[1]):
-                if (float(out_array[row][col]) > RES_SHORT_THRESHOLD_ROWCOL):
-                    print(".", end="")
-                    out_text += "."
-                else:
-                    print("X", end="")
-                    out_text += "X"
-            print("")
-            out_text += "\n"
-    print("")
-    return(num_shorts, out_text)
 
 def test_cont_col_to_pzbias_tfts_on(dut_name=dut_name_input, start_row=0, end_row=16, start_col=0, end_col=16):
     test_name = "CONT_COL_TO_PZBIAS_TFTS_ON"
@@ -662,77 +682,6 @@ def test_reset_sweep(dut_name=dut_name_input, start_rst=0, end_rst=16):
     time.sleep(DELAY_TEST_EQUIPMENT_TIME)
     ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
     return(0, "")
-
-def test_cont_rst_to_column(dut_name=dut_name_input, start_rst=0, start_col=0, end_rst = 16, end_col = 16):
-    test_name = "CONT_RST_TO_COL"
-    datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-    out_array = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
-    out_array[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
-    for i in range(len(out_array)):
-        out_array[len(out_array)-1-i][0] = "Rst" + str(i+1)# set rows of output array to be "R1"..."R16"
-    # out_array[0][0] = "Continuity Detection Row to Column"
-    # out_array[0][1] = dut_name
-    # out_array[0][2] = dt.datetime.now()
-    out_array[1][0] = "Resistance (ohm)"
-    num_shorts = 0
-    out_text = ""
-    inst.query('meas:res?')
-    time.sleep(DELAY_TIME)
-    out_text += "Sensor Rst to Col Continuity Detection Running..."
-    print(out_text)
-    out_text += "\n"
-    with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Rst Index", "Column Index", "Rst Res. to Col. (ohm)"])
-        printProgressBar(0, 16, suffix = "Rst 0/16", length = 16)
-        time.sleep(DELAY_TIME)
-        for rst in range(start_rst, end_rst):
-            for col in range(start_col, end_col):
-                time.sleep(DELAY_TIME)
-                ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-                time.sleep(DELAY_TIME)
-                ser.write(b'Q')                                  # set secondary mux to row/col mode
-                time.sleep(DELAY_TIME)
-                ser.write(b'T')                                  # set mode to rst write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(rst)[2:], 'utf-8'))          # write rst index
-                time.sleep(DELAY_TIME)
-                ser.write(b'L')                                  # set mode to column write mode
-                time.sleep(DELAY_TIME)
-                ser.write(bytes(hex(col)[2:], 'utf-8'))          # write column index
-                time.sleep(DELAY_TIME)
-                ser.write(b'O')                                  # set mode to continuity check
-                time.sleep(DELAY_TIME)
-                val = float(inst.query('meas:res?'))             # read resistance measurement
-                out_array[(16-rst)+1][col+1] = val
-                time.sleep(DELAY_TEST_EQUIPMENT_TIME)   # TODO: see how small we can make this delay
-                if (val < RES_SHORT_THRESHOLD_ROWCOL):
-                    num_shorts += 1
-                writer.writerow([str(rst+1), str(col+1), val])
-            printProgressBar(rst+1, 16, suffix = "Rst " + str(rst+1) + "/16", length = 16)
-    time.sleep(DELAY_TEST_EQUIPMENT_TIME)
-    ser.write(b'Z')                                              # set all mux enables + mux channels to OFF
-    out_array = np.delete(out_array, (0), axis=0)
-    np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
-    num_shorts_text = "There were " + str(num_shorts) + " rst/col short(s)"
-    print(num_shorts_text)
-    out_text += num_shorts_text + "\n"
-    out_array = np.delete(out_array, (0), axis=1)
-    out_array = out_array[1:]
-    if (num_shorts > 0):
-        for rst in range(out_array.shape[0]):
-            for col in range(out_array.shape[1]):
-                if (float(out_array[rst][col]) > RES_SHORT_THRESHOLD_ROWCOL):
-                    print(".", end="")
-                    out_text += "."
-                else:
-                    print("X", end="")
-                    out_text += "X"
-            print("")
-            out_text += "\n"
-    print("")
-    return(num_shorts, out_text)
 
 def test_loopback_resistance(num_counts=10, silent=False):
     inst.write('sens:res:rang 10E3')# set resistance measurement range to 10kOhm
@@ -899,7 +848,7 @@ if (tft_type == 1):
         # out_string += "\n" + test_cap(dut_id_input, dut_stage_input, "CAP_COL_TO_SHIELD", array_type, meas_range_input)[1]
         out_string += test_cont_col_to_pzbias_tfts_on()[1]
     elif (special_test_state == 2):
-        cont_row_to_column = test_cont_row_to_column()
+        cont_row_to_column = test_cont_two_dim(dut_name_input, "CONT_ROW_TO_COL", 0, 0, 16, 16)
         cont_row_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_PZBIAS", 0, 16)
         cont_col_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_COL_TO_PZBIAS", 0, 16)
         cont_row_to_shield = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_SHIELD", 0, 16)
@@ -914,7 +863,7 @@ if (tft_type == 1):
         out_string += cont_shield_to_pzbias[1]
     else:
         # these are tuples of (num shorts, output string)
-        cont_row_to_column = test_cont_row_to_column()
+        cont_row_to_column = test_cont_two_dim(dut_name_input, "CONT_ROW_TO_COL", 0, 0, 16, 16)
         cont_row_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_PZBIAS", 0, 16)
         cont_col_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_COL_TO_PZBIAS", 0, 16)
         cont_row_to_shield = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_SHIELD", 0, 16)
@@ -956,12 +905,12 @@ if (tft_type == 1):
 
 # 3T array testing
 elif (tft_type == 3):
-    cont_row_to_column = test_cont_row_to_column()
+    cont_row_to_column = test_cont_two_dim(dut_name_input, "CONT_ROW_TO_COL", 0, 0, 16, 16)
     cont_row_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_PZBIAS", 0, 16)
     cont_row_to_shield = test_cont_one_dim(dut_name_input, "CONT_ROW_TO_SHIELD", 0, 16)
     cont_col_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_COL_TO_PZBIAS", 0, 16)
     cont_col_to_shield = test_cont_one_dim(dut_name_input, "CONT_COL_TO_SHIELD", 0, 16)
-    cont_rst_to_column = test_cont_rst_to_column()
+    cont_rst_to_column = test_cont_two_dim(dut_name_input, "CONT_RST_TO_COL", 0, 0, 16, 16)
     cont_rst_to_shield = test_cont_one_dim(dut_name_input, "CONT_RST_TO_SHIELD", 0, 16)
     cont_rst_to_pzbias = test_cont_one_dim(dut_name_input, "CONT_RST_TO_PZBIAS", 0, 16)
     cont_vdd_to_column = test_cont_one_dim(dut_name_input, "CONT_COL_TO_VDD", 0, 16)
