@@ -258,7 +258,7 @@ def init_psu(rm, psu_id=PSU_SERIAL_STRING):
 '''
 Turns on the BK power supply
 Parameters: 
-    psu: A PyVISA object describing the power supply,
+    psu: A PyVISA object containing the initialized power supply
     psu:wait: The time to wait for the power supply to turn on
 Returns:
     True if successfully turned PSU on, None if PSU not successfully turned on
@@ -280,9 +280,10 @@ def set_psu_on(psu, psu_wait=PSU_DELAY_TIME):
         print("ERROR: couldn't turn on VISA power supply...")
         return None
 
-'''Turns off the BK power supply
+'''
+Turns off the BK power supply
 Parameters:
-    psu: A PyVISA object describing the power supply,
+    psu: A PyVISA object containing the initialized power supply
     psu_wait: The time to wait for the power supply to turn off
 Returns:
     True if successfully turned PSU off, False if PSU not successfully turned off
@@ -900,12 +901,34 @@ def test_cont_loopback_two(ser, inst):
     return(val, out_text)
 
 # helper functions for file compare/diff
+'''
+Helper function that extracts the timestamp from path+filename
+Parameters:
+    file_name: path + filename
+Returns:
+    Extracted timestamp, string format (e.g. YYYY-MM-DD_HH-MM-SS)
+'''
 def get_timestamp_raw(file_name):
     return file_name.split("\\")[-1][:19]
 
+'''
+Helper function that extracts the timestamp from filename
+Parameters:
+    file_name: filename alone, no path
+Returns:
+    Extracted timestamp, string format (e.g. YYYY-MM-DD_HH-MM-SS)
+'''
 def get_timestamp_truncated(file_name):    
     return file_name[:19]
 
+'''
+Helper function that extracts the text from a string before the keyword
+Parameters:
+    string: Full text to split
+    keyword: Text to search for in string
+Returns:
+    String with text leading up to keyword, or the full text string if keyword is not in string
+'''
 def truncate_to_keyword(string, keyword):
     if keyword in string:
         index_val = string.index(keyword)
@@ -913,6 +936,17 @@ def truncate_to_keyword(string, keyword):
     else:
         return string
 
+'''
+Compares two tester output files, prints out their differences, and returns number of differences.
+Splits each output file into chunks/results of each test (delineated by line breaks) and compares files chunk by chunk
+If files are mismatched in number of chunks, warns user and returns -1
+Parameters:
+    path: base path to both filenames (they must be in the same directory)
+    filename1: first file to compare
+    filename2: second file to compare
+Returns:
+    Number of differences detected, or -1 if the two files are mismatched in number of chunks
+'''
 def cmp_two_files(path, filename1, filename2):
     print("\nOriginal file is " + filename1)
     print("Comparing against filename " + filename2)
