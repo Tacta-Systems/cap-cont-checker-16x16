@@ -18,9 +18,9 @@ ID_SHEET_NAME = "Sensor Modules"
 OUT_SHEET_NAME = "Tester Output"
 
 ARRAY_ASSY_TYPES = {
-    0: "Backplanes",
-    1: "Sensor Arrays",
-    2: "Sensor Modules"
+    1: "Backplanes",
+    2: "Sensor Arrays",
+    3: "Sensor Modules"
 }
 
 ''' 
@@ -122,27 +122,49 @@ def write_to_spreadsheet(creds, payload, range_out_start_col='A', range_out_end_
     print(err)
     return False
 
+'''
+Returns a Python OAuth credential object that can be used to access Google Apps services,
+in particular Google Sheets.
+Parameters:
+  token_filename : String path to the OAuth token, generated in Google Apps
+  cred_filename  : String path to the OAuth secret credential file, which MUST BE KEPT PRIvATE
+  scopes         : List containing link to the Google application to access
+Returns:
+  Python OAuth credentials object, or None if initialization error
+'''
+def get_creds(token_filename="token.json", cred_filename="credentials.json", scopes=SCOPES):
+  try:
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists(token_filename):
+      creds = Credentials.from_authorized_user_file(token_filename, scopes)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+      if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+      else:
+        flow = InstalledAppFlow.from_client_secrets_file(
+            cred_filename, scopes
+        )
+        creds = flow.run_local_server(port=0)
+      # Save the credentials for the next run
+      with open(token_filename, "w") as token:
+        token.write(creds.to_json())
+    return creds
+  except HttpError as err:
+    print(err)
+    return None
+
 def main():
   array_id = input("Array ID please: ")
-  array_stage = ARRAY_ASSY_TYPES[len(array_id.rstrip('_').split('_'))-1]
-  creds = None
-  # The file token.json stores the user's access and refresh tokens, and is
-  # created automatically when the authorization flow completes for the first
-  # time.
-  if os.path.exists("token.json"):
-    creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-  # If there are no (valid) credentials available, let the user log in.
-  if not creds or not creds.valid:
-    if creds and creds.expired and creds.refresh_token:
-      creds.refresh(Request())
-    else:
-      flow = InstalledAppFlow.from_client_secrets_file(
-          "credentials.json", SCOPES
-      )
-      creds = flow.run_local_server(port=0)
-    # Save the credentials for the next run
-    with open("token.json", "w") as token:
-      token.write(creds.to_json())
+  array_stage = ARRAY_ASSY_TYPES[len(array_id.rstrip('_').split('_'))]
+  
+  creds = get_creds()
+  if creds is None:
+    print("ERROR: Could not initialize Google Sheets...")
+    return -1
   tft_type = get_array_transistor_type(creds, array_id)
   print(tft_type)
   # Add check that tft_type is not None
