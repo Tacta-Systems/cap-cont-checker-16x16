@@ -38,7 +38,7 @@ Parameters:
 Returns:
   String with '1' for 1T array or '3' for 3T array, or NoneType object if not found/error
 '''
-def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='Q', 
+def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='R',
                               spreadsheet_id=SPREADSHEET_ID, id_sheet_name=ID_SHEET_NAME):
   try:
     service = build("sheets", "v4", credentials=creds)
@@ -71,9 +71,9 @@ def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='Q',
           break
     if (found_array):
       if (tft_type.split('-')[0] == 'FS'):
-        return tft_type.split('-')[1][0]
+        return int(tft_type.split('-')[1][0])
       else:
-        return tft_type.split('-')[0][0]
+        return int(tft_type.split('-')[0][0])
     else:
       print("Array not found!")
       return None
@@ -96,7 +96,7 @@ Parameters:
 Returns:
   True if successfully written, or False otherwise
 '''
-def write_to_spreadsheet(creds, payload, range_out_start_col='A', range_out_end_col='E', 
+def write_to_spreadsheet(creds, payload, range_out_start_col='A', range_out_end_col='E',
                          spreadsheet_id=SPREADSHEET_ID, out_sheet_name=OUT_SHEET_NAME):
   if (type(payload) is not list):
     print("ERROR: payload is not a list...")
