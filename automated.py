@@ -39,6 +39,7 @@ import csv
 import glob
 import keyboard
 import os
+import os.path
 import pyvisa
 import sys
 import time
@@ -49,14 +50,23 @@ from collections import defaultdict
 from pygame import mixer
 from tkinter import filedialog
 
+# To install Google Python libraries, run this command:
+# pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from httplib2 import Http
+
 # Root path where test results are saved.
 # Inside has the following folders: "Sensor Modules", "Sensor Arrays", and "Backplanes"
 PATH_BASE = "G:\\Shared drives\\Sensing\\Testing\\"
 
 USING_USB_PSU = True
 
-# TODO: load COM port, DMM serial number, and PSU serial number
-COM_PORT_DEFAULT = "COM5" # default hardcoded value, ok to change from setup to setup
+# TODO: load COM port, DMM serial number, and PSU serial number from config file, for scalability
+COM_PORT_DEFAULT = "COM3" # default hardcoded value, ok to change from setup to setup
 DMM_SERIAL_STRING  = "USB0::0x05E6::0x6500::04611761::INSTR"
 PSU_SERIAL_STRING  = "USB0::0x3121::0x0002::583H23104::INSTR"
 PSU_DELAY_TIME = 3 # seconds
@@ -73,9 +83,9 @@ CAP_RANGE_DEFAULT = '1E-9'
 # and they can be "backplanes", "sensor arrays", or "sensor modules".
 ARRAY_TFT_TYPES = [1, 3]
 ARRAY_ASSY_TYPES = {
-    0: "Backplanes",
-    1: "Sensor Arrays",
-    2: "Sensor Modules"
+    1: "Backplanes",
+    2: "Sensor Arrays",
+    3: "Sensor Modules"
 }
 
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
@@ -88,6 +98,20 @@ CAP_THRESHOLD_MIN_DEFAULT = 5 # pF
 CAP_THRESHOLD_MAX_DEFAULT = 50
 CAP_THRESHOLD_VALS = defaultdict(lambda: (CAP_THRESHOLD_MIN_DEFAULT, CAP_THRESHOLD_MAX_DEFAULT))
 CAP_THRESHOLD_VALS["backplane"] = (-2, 2) # bare backplane without sensors
+
+# Define max number of shorts are permitted acceptable for an array
+MAX_PASS_CONT_COUNT_TWO_DIM = 0
+MAX_PASS_CONT_COUNT_ONE_DIM = 0
+MIN_PASS_CAP_COUNT  = 255
+
+# Define max number of out-of-range capacitance sensors are permitted acceptable for an array
+
+# Google Sheets integration
+# If modifying these scopes, delete the file token.json.
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SPREADSHEET_ID = "1U0fXZTtxtd9mQf37cgzLy9CH4UH5T_lKMpFjCBX9qVs"
+ID_SHEET_NAME = "Sensor Modules"
+OUT_SHEET_NAME = "Tester Output"
 
 '''
 Dictionary with 1-character commands to set secondary mux board into the correct mode for the measurement
@@ -126,14 +150,48 @@ CONT_DICT_ONE_DIM = {
     "CONT_RST_TO_SHIELD": (b'N', b'T')
 }
 
-# For node continuity checks (e.g. vdd to shield),
-# dictionary with 1-character commands to set secondary mux board into appropriate state
+'''
+For node continuity checks (e.g. vdd to shield),
+dictionary with 1-character commands to set secondary mux board into appropriate state
+'''
 CONT_DICT_NODE = {
     "CONT_VDD_TO_SHIELD":    b'@',
     "CONT_VRST_TO_SHIELD":   b'%',
     "CONT_VDD_TO_PZBIAS":    b'#',
     "CONT_VRST_TO_PZBIAS":   b'^',
     "CONT_SHIELD_TO_PZBIAS": b'('
+}
+
+'''
+Dictionary used to store results from tests
+Results are uploaded to Google Sheets in this order
+Tests that were not run will be uploaded to GSheets as blank.
+'''
+output_payload_gsheets_dict = {
+    "Timestamp"           : "",
+    "Serial Number"       : "",
+    "Array Type"          : "",
+    "Array Module Stage"  : "",
+    "TFT Type"            : "",
+    "Loopback One (ohm)"  : "",
+    "Loopback Two (ohm)"  : "",
+    "Cap Col to PZBIAS"   : "",
+    "Col to PZBIAS with TFT's ON" : "",
+    "Row to Col"    : "",
+    "Rst to Col"    : "",
+    "Row to PZBIAS" : "",
+    "Row to SHIELD" : "",
+    "Col to PZBIAS" : "",
+    "Col to SHIELD" : "",
+    "Col to Vdd"    : "",
+    "Col to Vrst"   : "",
+    "Rst to SHIELD" : "",
+    "Rst to PZBIAS" : "",
+    "SHIELD to PZBIAS"  : "",
+    "Vdd to SHIELD" : "",
+    "Vdd to PZBIAS" : "",
+    "Vrst to SHIELD": "",
+    "Vrst to PZBIAS": ""
 }
 
 '''
@@ -412,7 +470,7 @@ Returns:
         0 for success, -1 for failure or wrong parameter specified
         Output text (to be appended to summary file)
 '''
-def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_type, 
+def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_type,
              meas_range='1e-9', start_row=0, start_col=0, end_row=16, end_col=16):
     if (test_mode_in not in CAP_FN_DICT):
         print("ERROR: test mode not defined...")
@@ -645,7 +703,7 @@ Parameters:
     test_id: Test mode to run, one of the ones specified in CONT_DICT_NODE
 Returns:
     Tuple, with following parameters:
-        0 if no short, 1 if shorted
+        String "PASS" if no short, "FAIL" if shorted
         Output text (to be appended to summary file)
 '''
 def test_cont_node(ser, inst, path, dut_name, test_id):
@@ -672,11 +730,11 @@ def test_cont_node(ser, inst, path, dut_name, test_id):
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\n" + test_name + " does not have shorts\n"
         print(out_text)
-        return(0, out_text)
+        return("PASS", out_text)
     else:
         out_text += "\n" + test_name + " has shorts\n"
         print(out_text)
-        return (1, out_text)
+        return ("FAIL", out_text)
 
 '''
 Measures continuity between column and PZBIAS while toggling the row TFT's on and off (to +15V and -8V)
@@ -1048,6 +1106,163 @@ def cmp_two_files(path, filename1, filename2):
         else:
             print("ERROR: File lengths are mismatched")
 
+# Helper functions for Google Sheets integration
+'''
+Returns a Python OAuth credential object that can be used to access Google Apps services,
+in particular Google Sheets.
+Parameters:
+    token_filename : String path to the OAuth token, generated in Google Apps
+    cred_filename  : String path to the OAuth secret credential file, which MUST BE KEPT PRIvATE
+    scopes         : List containing link to the Google application to access
+Returns:
+    Python OAuth credentials object, or None if initialization error
+'''
+def get_creds(token_filename="token.json", cred_filename="credentials.json", scopes=SCOPES):
+  try:
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists(token_filename):
+      creds = Credentials.from_authorized_user_file(token_filename, scopes)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+      if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+      else:
+        flow = InstalledAppFlow.from_client_secrets_file(
+            cred_filename, scopes
+        )
+        creds = flow.run_local_server(port=0)
+      # Save the credentials for the next run
+      with open(token_filename, "w") as token:
+        token.write(creds.to_json())
+    return creds
+  except HttpError as err:
+    print(err)
+    return None
+
+'''
+Function that pulls the array TFT type from the sheet 'Sensing Inventory'/'Sensor Modules'/'Sensor Module SN'
+It queries the spreadsheet in column 'A' (default) and auto-parses the input array_id regardless of type
+(backplane, array, module). It then looks in the corresponding column 'Q' (default) and pulls TFT type (1 or 3)
+Parameters:
+    creds:      Initialized Google Apps credential, with token.json initialized. Refer to 'main()' in
+                'google_sheets_example.py' for initialization example
+    array_id:   The query, can be a backplane, assembly, or module id, in the format 'E2421-002-001-E5_T1_R1-103'
+    dieid_cols: The column in which to search for the query, by default column 'A'
+    dieid_tfts: The column with the corresponding TFT count, by default column 'Q'
+    spreadsheet_id: The Google Sheets spreadsheet ID, extracted from the URL (docs.google.com/spreadsheets/d/***)
+    id_sheet_name : The name of the sheet to search in for array_id, by default set by global variable
+Returns:
+    String with '1' for 1T array or '3' for 3T array, or NoneType object if not found/error
+'''
+def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='R',
+                              spreadsheet_id=SPREADSHEET_ID, id_sheet_name=ID_SHEET_NAME):
+  try:
+    service = build("sheets", "v4", credentials=creds)
+    sheet = service.spreadsheets()
+    # Define the range (A1 notation) to append the data at the end of the sheet
+    range_name_dieid = f'{id_sheet_name}!' + dieid_cols + ':' + dieid_cols
+    range_name_tfttype = f'{id_sheet_name}!' + dieid_tfts + ':' + dieid_tfts
+    result_dieid = (
+      sheet.values()
+      .get(spreadsheetId=spreadsheet_id, range=range_name_dieid)
+      .execute()
+    )
+    result_tfttype = (
+      sheet.values()
+      .get(spreadsheetId=spreadsheet_id, range=range_name_tfttype)
+      .execute()
+    )
+    values_dieid = result_dieid.get("values", [])
+    values_tfttype = result_tfttype.get("values", [])
+
+    found_array = False
+    i = 0
+    tft_type="INVALID"
+    for i in range(len(values_dieid)):
+      if (len(values_dieid[i]) > 0):
+        if (values_dieid[i][0].rstrip("_").upper().split('_')[0] == array_id.upper().split('_')[0]):
+          # print("Found at index " + str(i))
+          found_array = True
+          tft_type = values_tfttype[i][0]
+          break
+    if (found_array):
+      if (tft_type.split('-')[0] == 'FS'):
+        return tft_type.split('-')[1][0]
+      else:
+        return tft_type.split('-')[0][0]
+    else:
+      print("Array not found in inventory!")
+      return None
+  except HttpError as err:
+    print(err)
+    return None
+
+'''
+Writes a row to a spreadsheet, in particular the results sheet of the 'Sensing Inventory' spreadsheet.
+This payload is a 1D row array containing the desired values to write to the sheet.
+Data is appended after the last data-containing row of the spreadsheet.
+Parameters:
+    creds:      Initialized Google Apps credential, with token.json initialized. Refer to 'main()' in
+                'google_sheets_example.py' for initialization example
+    payload:    a 1D array containing the data to write to the spreadsheet, in string format
+    range_out_start_col: The first (leftmost) column to start writing to
+    range_out_end_Col  : The last (rightmost) column to end writing to
+    spreadsheet_id : The Google Sheets spreadsheet ID, extracted from the URL (docs.google.com/spreadsheets/d/***)
+    out_sheet_name : The name of the sheet to write in, by default set to global variable
+Returns:
+    True if successfully written, or False otherwise
+'''
+def write_to_spreadsheet(creds, payload, range_out_start_col='A', range_out_end_col='E',
+                         spreadsheet_id=SPREADSHEET_ID, out_sheet_name=OUT_SHEET_NAME):
+  if (type(payload) is not list):
+    print("ERROR: payload is not a list...")
+    return False
+  try:
+    service = build("sheets", "v4", credentials=creds)
+     # Prepare the request body with the values to append
+    body_out = {
+        'values': [payload]
+    }
+    range_name_out = f'{out_sheet_name}!' + range_out_start_col + ':' + range_out_end_col
+    # Call the API to append the new row
+    sheet = service.spreadsheets()
+    result = sheet.values().append(
+        spreadsheetId=spreadsheet_id,
+        range=range_name_out,
+        valueInputOption='RAW',
+        insertDataOption='INSERT_ROWS',
+        body=body_out
+    ).execute()
+    return True
+  except HttpError as err:
+    print(err)
+    return False
+
+'''
+Helper function to pass/fail continuity check function results
+Parameters:
+    num_shorts : the value to be compared
+    threshold  : the maximum count to pass
+Returns:
+    "PASS" if num_shorts <= threshold, "FAIL" otherwise
+'''
+def check_cont_results(num_shorts, threshold=0):
+    return "PASS" if num_shorts <= threshold else "FAIL"
+
+'''
+Helper function to pass/fail capacitance check function results
+Parameters:
+    num_shorts : the value to be compared
+    threshold  : the minimum count to pass
+Returns:
+    "PASS" if num_shorts >= threshold, "FAIL" otherwise
+'''
+def check_cap_results(num_shorts, threshold=MIN_PASS_CAP_COUNT):
+    return "PASS" if num_shorts >= threshold else "FAIL"
+
 def main():
     datetime_now = dt.datetime.now()
     ser = init_helper(init_serial(COM_PORT_DEFAULT))
@@ -1056,30 +1271,12 @@ def main():
     if (USING_USB_PSU):
         psu = init_helper(init_psu(rm))
         init_helper(set_psu_on(psu, PSU_DELAY_TIME))
-    
+
     print("\nSetup Instructions:\n" +
         "- Plug sensor into connector on primary \n" +
         "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
         "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
         "- Ensure power supply is ON\n")
-
-    array_type_raw = 0
-    while True:
-        try:
-            array_type_raw = int(input("Please enter array type--\n" +
-                                       "- 0 for backplanes\n" +
-                                       "- 1 for sensor arrays\n" +
-                                       "- 2 for sensor modules: "))
-        except ValueError:
-            print("Sorry, please enter a numerical value")
-            continue
-        if (array_type_raw not in list(ARRAY_ASSY_TYPES.keys())):
-            print("Sorry, please enter a valid response")
-            continue
-        else:
-            break
-    array_assy_type = ARRAY_ASSY_TYPES[array_type_raw]
-    path = PATH_BASE + array_assy_type + "\\"
 
     dut_name_input = ""
     while True:
@@ -1093,6 +1290,35 @@ def main():
             continue
         else:
             break
+    '''
+    extracts array type from the input by splitting into chunks by underscore
+    1 chunk means backplane
+    2 chunks mean array (sensors on backplane)
+    3 chunks mean module (array with attached flex)
+    '''
+    array_stage_raw = len(dut_name_input.rstrip('_').split('_'))
+    array_stage_text = ARRAY_ASSY_TYPES[array_stage_raw]
+    override = input("Array type is '" + array_stage_text + "'. Press 'enter' to continue with tests, " +
+                     "or type 'change' to override: ")
+    if (override.lower() == 'change'):
+        query = "Please select from the following...\n"
+        for key in ARRAY_ASSY_TYPES.keys():
+            query += "- " + str(key) + " for " + ARRAY_ASSY_TYPES[key] + "\n"
+        query = query[:-1] + ": "
+        while True:
+            try:
+                array_stage_raw = int(input(query))
+            except ValueError:
+                print("Sorry, please enter a numerical value...")
+                continue
+            if (int(array_stage_raw) not in ARRAY_ASSY_TYPES.keys()):
+                print("Sorry, please enter a valid selection...")
+                continue
+            else:
+                break
+        array_stage_text = ARRAY_ASSY_TYPES[array_stage_raw]
+
+    path = PATH_BASE + array_stage_text.title() + "\\"
     if (os.path.exists(path + dut_name_input)):
         path += dut_name_input + "\\"
     else:
@@ -1100,7 +1326,8 @@ def main():
         valid_responses = ["Y", "N"]
         while True:
             try:
-                make_new_path = input("Are you sure you want to make a new directory? 'Y' or 'N': ")
+                make_new_path = input("Are you sure you want to make a new directory " + path + dut_name_input + "?\n" +
+                                      "'Y' or 'N': ")
             except ValueError:
                 print("Sorry, please enter 'Y' or 'N'")
                 continue
@@ -1117,33 +1344,61 @@ def main():
                     path += dut_name_input + "\\"
                 break
 
-    dut_stage_input = ""
-    if (array_assy_type == "Sensor Modules"):
+    dut_module_stage_input = ""
+    if (array_stage_raw == 3):
         while True:
             try:
-                dut_stage_input = "_" + input("\nPlease enter the array stage of assembly (e.g. onglass): ")
+                dut_module_stage_input = input("\nPlease enter the array stage of assembly (e.g. onglass): ")
             except ValueError:
                 print("Sorry, array stage of assembly can't be blank")
                 continue
-            if (len(dut_stage_input) < 1):
+            if (len(dut_module_stage_input) < 1):
                 print("Sorry, array stage of assembly can't be blank")
                 continue
             else:
                 break
 
-    dut_name_full = dut_name_input + dut_stage_input
+    dut_name_full = dut_name_input + "_" +  dut_module_stage_input
     print("Test data for " + dut_name_full + " will save to path " + path + "\n")
+
+    # Query TFT type from Google Sheets with option to override
+    creds = get_creds()
+    array_tft_type = get_array_transistor_type(creds, dut_name_input)
+    override = ""
+    if (type(array_tft_type) is int):
+        override = input("Array TFT type is " + str(array_tft_type) + "T.\nPress 'enter' to continue with " +
+                     str(array_tft_type) + "T tests, or type 'change' to override: ")
+    else:
+        override = "change"
+    if (override.lower() == 'change'):
+        query = "Please select from the following...\n"
+        for key in ARRAY_TFT_TYPES:
+            query += "- " + str(key) + " for " + str(key) + "T\n"
+        query = query[:-1] + ": "
+        while True:
+            try:
+                array_tft_type = int(input(query))
+            except ValueError:
+                print("Sorry, please enter a numerical value...")
+                continue
+            if (array_tft_type not in ARRAY_TFT_TYPES):
+                print("Sorry, please enter a valid selection...")
+                continue
+            else:
+                break
+    print("Running tests for " + str(array_tft_type) + "T array...\n")
 
     out_string = ""
     loop_one_res = 0
     loop_two_res = 0
-    if (array_type_raw in [0, 1]): # Runs loopback check on bare backplanes and sensor arrays not bonded to flex
+
+    if (array_stage_raw in [1, 2]): # Runs loopback check on bare backplanes and sensor arrays not bonded to flex
         print("Press 'q' to skip loopback check...")
         (loop_one_res, loop_two_res) = test_loopback_resistance(ser, inst)
         out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
         out_string += "Loopback 2 resistance: " + str(loop_two_res) + " ohms" + "\n\n"
         print("")
-        with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
+        with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
             file.write(str(loop_one_res) + "," + str(loop_two_res))
     else:
@@ -1152,26 +1407,19 @@ def main():
         loop_two_res = test_cont_loopback_two(ser, inst)
         out_string += str(loop_one_res[1]) + "\n"
         out_string += str(loop_two_res[1]) + "\n\n"
-        with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
+        with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
             file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
 
-    tft_type = 1
-    while True:
-        try:
-            tft_type = int(input("Please select array type: '1' for 1T, '3' for 3T: "))
-        except ValueError:
-            print("Sorry, please select a valid array type")
-            continue
-        if (tft_type not in ARRAY_TFT_TYPES):
-            print("Sorry, please select a valid array type")
-            continue
-        else:
-            break
-    print("Running " + str(tft_type) + "T array tests...")
-    print("\nIf there are shorts, the terminal output (.) means open and (X) means short\n")
+    output_payload_gsheets_dict["Timestamp"]          = datetime_now.strftime('%Y-%m-%d_%H-%M-%S')
+    output_payload_gsheets_dict["Serial Number"]      = dut_name_input
+    output_payload_gsheets_dict["Array Type"]         = array_stage_text
+    output_payload_gsheets_dict["Array Module Stage"] = dut_module_stage_input
+    output_payload_gsheets_dict["TFT Type"]           = str(array_tft_type) + "T"
+    output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res[0])
+    output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res[0])
 
-    if (tft_type == 1):
+    if (array_tft_type == 1):
         special_test_state = 0
         test_selection_raw = input("Please hit 'enter' for default (full) 1T test, or\n" +
                                 "type '1' to only run cap + TFT cont. tests and skip continuity checks, or\n" +
@@ -1195,15 +1443,20 @@ def main():
             else:
                 meas_range_input = '1e-9'
                 print("Running cap test with default 1nF range...\n")
-            out_string += "\n" + test_cap(ser, inst, path, dut_name_input, dut_stage_input,
-                                          "CAP_COL_TO_PZBIAS", array_assy_type, meas_range_input)[1]
-            # out_string += "\n" + test_cap(dut_name_input, dut_stage_input, "CAP_COL_TO_SHIELD", array_type, meas_range_input)[1]
-            out_string += test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_input)[1]
+            test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_module_stage_input,
+                                    "CAP_COL_TO_PZBIAS", array_stage_text, meas_range_input)
+            test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_input)
+
+            out_string += "\n" + test_cap_out[1]
+            out_string += test_cont_col_to_pzbias_tfts_on_out[1]
+            output_payload_gsheets_dict["Cap Col to PZBIAS "] = check_cap_results(test_cap_out[0], MIN_PASS_CAP_COUNT)
+            output_payload_gsheets_dict["Col to PZBIAS with TFT's ON"] = check_cont_results(test_cont_col_to_pzbias_tfts_on_out[0], MAX_PASS_CONT_COUNT_TWO_DIM)
+
         elif (special_test_state == 2):
             cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
             cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
-            cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
             cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
+            cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
             cont_col_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
             cont_shield_to_pzbias = test_cont_node(dut_name_full, "CONT_SHIELD_TO_PZBIAS")
 
@@ -1213,12 +1466,19 @@ def main():
             out_string += cont_col_to_pzbias[1] + "\n"
             out_string += cont_col_to_shield[1] + "\n"
             out_string += cont_shield_to_pzbias[1]
+
+            output_payload_gsheets_dict["Row to Col"]    = check_cont_results(cont_row_to_column[0], MAX_PASS_CONT_COUNT_TWO_DIM)
+            output_payload_gsheets_dict["Row to PZBIAS"] = check_cont_results(cont_row_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+            output_payload_gsheets_dict["Row to SHIELD"] = check_cont_results(cont_row_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+            output_payload_gsheets_dict["Col to PZBIAS"] = check_cont_results(cont_col_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+            output_payload_gsheets_dict["Col to SHIELD"] = check_cont_results(cont_col_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+            output_payload_gsheets_dict["SHIELD to PZBIAS"] = cont_shield_to_pzbias[0]
         else:
             # these are tuples of (num shorts, output string)
             cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
             cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
-            cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
             cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
+            cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
             cont_col_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
             cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
 
@@ -1228,6 +1488,13 @@ def main():
             out_string += cont_col_to_pzbias[1] + "\n"
             out_string += cont_col_to_shield[1] + "\n"
             out_string += cont_shield_to_pzbias[1]
+
+            output_payload_gsheets_dict["Row to Col"]    = check_cont_results(cont_row_to_column[0], MAX_PASS_CONT_COUNT_TWO_DIM)
+            output_payload_gsheets_dict["Row to PZBIAS"] = check_cont_results(cont_row_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+            output_payload_gsheets_dict["Row to SHIELD"] = check_cont_results(cont_row_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+            output_payload_gsheets_dict["Col to PZBIAS"] = check_cont_results(cont_col_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+            output_payload_gsheets_dict["Col to SHIELD"] = check_cont_results(cont_col_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+            output_payload_gsheets_dict["SHIELD to PZBIAS"] = cont_shield_to_pzbias[0]
 
             hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0 or cont_shield_to_pzbias[0]>0
             response = ""
@@ -1251,24 +1518,29 @@ def main():
                 else:
                     meas_range_input = '1e-9'
                     print("Running cap test with default 1nF range...\n")
-                out_string += "\n" + test_cap(ser, inst, path, dut_name_input, dut_stage_input, "CAP_COL_TO_PZBIAS", array_assy_type, meas_range_input)[1] + "\n"
-                # test_cap(dut_name_input, dut_stage_input, "CAP_COL_TO_SHIELD", array_assy_type, meas_range_input)
-                out_string += test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_input)[1]
+                test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_module_stage_input,
+                                        "CAP_COL_TO_PZBIAS", array_stage_text, meas_range_input)
+                test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_input)
+
+                out_string += "\n" + test_cap_out[1]
+                out_string += test_cont_col_to_pzbias_tfts_on_out[1]
+                output_payload_gsheets_dict["Cap Col to PZBIAS "] = check_cap_results(test_cap_out[0], MIN_PASS_CAP_COUNT)
+                output_payload_gsheets_dict["Col to PZBIAS with TFT's ON"] = check_cont_results(test_cont_col_to_pzbias_tfts_on_out[0], MAX_PASS_CONT_COUNT_TWO_DIM)
 
     # 3T array testing
-    elif (tft_type == 3):
+    elif (array_tft_type == 3):
         cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
         cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
         cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
         cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
         cont_col_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
+        cont_col_to_vdd    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VDD")
+        cont_col_to_vrst   = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VRST")
         cont_rst_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_COL")
         cont_rst_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_SHIELD")
         cont_rst_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_PZBIAS")
-        cont_vdd_to_column = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VDD")
         cont_vdd_to_shield = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_SHIELD")
         cont_vdd_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_PZBIAS")
-        cont_vrst_to_column = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VRST")
         cont_vrst_to_shield = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_SHIELD")
         cont_vrst_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_PZBIAS")
         cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
@@ -1278,16 +1550,33 @@ def main():
         out_string += cont_row_to_shield[1] + "\n"
         out_string += cont_col_to_pzbias[1] + "\n"
         out_string += cont_col_to_shield[1] + "\n"
+        out_string += cont_col_to_vdd[1] + "\n"
+        out_string += cont_col_to_vrst[1] + "\n"
         out_string += cont_rst_to_column[1] + "\n"
         out_string += cont_rst_to_shield[1] + "\n"
         out_string += cont_rst_to_pzbias[1] + "\n"
-        out_string += cont_vdd_to_column[1] + "\n"
         out_string += cont_vdd_to_shield[1] + "\n"
         out_string += cont_vdd_to_pzbias[1] + "\n"
-        out_string += cont_vrst_to_column[1] + "\n"
         out_string += cont_vrst_to_shield[1] + "\n"
         out_string += cont_vrst_to_pzbias[1] + "\n"
         out_string += cont_shield_to_pzbias[1]
+
+        output_payload_gsheets_dict["Row to Col"]    = check_cont_results(cont_row_to_column[0], MAX_PASS_CONT_COUNT_TWO_DIM)
+        output_payload_gsheets_dict["Row to PZBIAS"] = check_cont_results(cont_row_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+        output_payload_gsheets_dict["Row to SHIELD"] = check_cont_results(cont_row_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+        output_payload_gsheets_dict["Col to PZBIAS"] = check_cont_results(cont_col_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+        output_payload_gsheets_dict["Col to SHIELD"] = check_cont_results(cont_col_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+        output_payload_gsheets_dict["Col to Vdd"]    = check_cont_results(cont_col_to_vdd[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+        output_payload_gsheets_dict["Col to Vrst"]   = check_cont_results(cont_col_to_vrst[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+        output_payload_gsheets_dict["Rst to Col"]    = check_cont_results(cont_rst_to_column[0], MAX_PASS_CONT_COUNT_TWO_DIM)
+        output_payload_gsheets_dict["Rst to SHIELD"] = check_cont_results(cont_rst_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+        output_payload_gsheets_dict["Rst to PZBIAS"] = check_cont_results(cont_rst_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
+
+        output_payload_gsheets_dict["Vdd to SHIELD"] = cont_vdd_to_shield[0]
+        output_payload_gsheets_dict["Vdd to PZBIAS"] = cont_vdd_to_pzbias[0]
+        output_payload_gsheets_dict["Vrst to SHIELD"] = cont_vrst_to_shield[0]
+        output_payload_gsheets_dict["Vrst to PZBIAS"] = cont_vrst_to_pzbias[0]
+        output_payload_gsheets_dict["SHIELD to PZBIAS"] = cont_shield_to_pzbias[0]
     else:
         pass
 
@@ -1296,11 +1585,18 @@ def main():
     output_filename = datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_full + "_summary.txt"
     output_filename_full = path + output_filename
     out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_name_full + "\n" + 
-                "Array Type: " + str(tft_type) + "T\n" +
+                "Array Type: " + str(array_tft_type) + "T\n" +
                 "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
 
     with open(output_filename_full, 'w', newline='') as file:
         file.write(out_string)
+
+    output_payload_gsheets = list(output_payload_gsheets_dict.values())
+    write_success = write_to_spreadsheet(creds, output_payload_gsheets)
+    if (write_success):
+        print("Successfully wrote data to Google Sheets!")
+    else:
+        print("ERROR: Could not write data to Google Sheets")
 
     inst.close()
     if (USING_USB_PSU):
