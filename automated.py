@@ -47,8 +47,11 @@ import tkinter
 import datetime as dt
 import numpy as np
 from collections import defaultdict
-from pygame import mixer
 from tkinter import filedialog
+
+# silence the PyGame import startup message
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+from pygame import mixer
 
 # To install Google Python libraries, run this command:
 # pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
@@ -1190,9 +1193,9 @@ def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='R',
           break
     if (found_array):
       if (tft_type.split('-')[0] == 'FS'):
-        return tft_type.split('-')[1][0]
+        return int(tft_type.split('-')[1][0])
       else:
-        return tft_type.split('-')[0][0]
+        return int(tft_type.split('-')[0][0])
     else:
       print("Array not found in inventory!")
       return None
@@ -1449,7 +1452,7 @@ def main():
 
             out_string += "\n" + test_cap_out[1]
             out_string += test_cont_col_to_pzbias_tfts_on_out[1]
-            output_payload_gsheets_dict["Cap Col to PZBIAS "] = check_cap_results(test_cap_out[0], MIN_PASS_CAP_COUNT)
+            output_payload_gsheets_dict["Cap Col to PZBIAS"] = check_cap_results(test_cap_out[0], MIN_PASS_CAP_COUNT)
             output_payload_gsheets_dict["Col to PZBIAS with TFT's ON"] = check_cont_results(test_cont_col_to_pzbias_tfts_on_out[0], MAX_PASS_CONT_COUNT_TWO_DIM)
 
         elif (special_test_state == 2):
@@ -1496,7 +1499,7 @@ def main():
             output_payload_gsheets_dict["Col to SHIELD"] = check_cont_results(cont_col_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
             output_payload_gsheets_dict["SHIELD to PZBIAS"] = cont_shield_to_pzbias[0]
 
-            hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0 or cont_shield_to_pzbias[0]>0
+            hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0 or cont_shield_to_pzbias[0]=="FAIL"
             response = ""
             if hasShorts:
                 print("This array doesn't have pants... it has shorts!")
@@ -1524,7 +1527,7 @@ def main():
 
                 out_string += "\n" + test_cap_out[1]
                 out_string += test_cont_col_to_pzbias_tfts_on_out[1]
-                output_payload_gsheets_dict["Cap Col to PZBIAS "] = check_cap_results(test_cap_out[0], MIN_PASS_CAP_COUNT)
+                output_payload_gsheets_dict["Cap Col to PZBIAS"] = check_cap_results(test_cap_out[0], MIN_PASS_CAP_COUNT)
                 output_payload_gsheets_dict["Col to PZBIAS with TFT's ON"] = check_cont_results(test_cont_col_to_pzbias_tfts_on_out[0], MAX_PASS_CONT_COUNT_TWO_DIM)
 
     # 3T array testing
@@ -1578,6 +1581,7 @@ def main():
         output_payload_gsheets_dict["Vrst to PZBIAS"] = cont_vrst_to_pzbias[0]
         output_payload_gsheets_dict["SHIELD to PZBIAS"] = cont_shield_to_pzbias[0]
     else:
+        print("Undefined array TFT type, skipping all tests...")
         pass
 
     print("Done testing serial number " + dut_name_full + "!\n")
