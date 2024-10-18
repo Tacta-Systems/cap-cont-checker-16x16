@@ -171,30 +171,31 @@ Results are uploaded to Google Sheets in this order
 Tests that were not run will be uploaded to GSheets as blank.
 '''
 output_payload_gsheets_dict = {
-    "Timestamp"           : "",
-    "Serial Number"       : "",
-    "Array Type"          : "",
-    "Array Module Stage"  : "",
-    "TFT Type"            : "",
-    "Loopback One (ohm)"  : "",
-    "Loopback Two (ohm)"  : "",
-    "Cap Col to PZBIAS"   : "",
-    "Col to PZBIAS with TFT's ON" : "",
-    "Row to Col"    : "",
-    "Rst to Col"    : "",
-    "Row to PZBIAS" : "",
-    "Row to SHIELD" : "",
-    "Col to PZBIAS" : "",
-    "Col to SHIELD" : "",
-    "Col to Vdd"    : "",
-    "Col to Vrst"   : "",
-    "Rst to SHIELD" : "",
-    "Rst to PZBIAS" : "",
-    "SHIELD to PZBIAS"  : "",
-    "Vdd to SHIELD" : "",
-    "Vdd to PZBIAS" : "",
-    "Vrst to SHIELD": "",
-    "Vrst to PZBIAS": ""
+    "Timestamp"            : "",
+    "Tester Serial Number" : "",
+    "Array Serial Number"  : "",
+    "Array Type"           : "",
+    "Array Module Stage"   : "",
+    "TFT Type"             : "",
+    "Loopback One (ohm)"   : "",
+    "Loopback Two (ohm)"   : "",
+    "Cap Col to PZBIAS (# pass)"   : "",
+    "Col to PZBIAS with TFT's ON (# shorts)" : "",
+    "Row to Col (# shorts)"    : "",
+    "Rst to Col (# shorts)"    : "",
+    "Row to PZBIAS (# shorts)" : "",
+    "Row to SHIELD (# shorts)" : "",
+    "Col to PZBIAS (# shorts)" : "",
+    "Col to SHIELD (# shorts)" : "",
+    "Col to Vdd (# shorts)"    : "",
+    "Col to Vrst (# shorts)"   : "",
+    "Rst to SHIELD (# shorts)" : "",
+    "Rst to PZBIAS (# shorts)" : "",
+    "SHIELD to PZBIAS (ohm)"   : "",
+    "Vdd to SHIELD (ohm)"      : "",
+    "Vdd to PZBIAS (ohm)"      : "",
+    "Vrst to SHIELD (ohm)"     : "",
+    "Vrst to PZBIAS (ohm)"     : ""
 }
 
 '''
@@ -697,7 +698,7 @@ def test_cont_one_dim(ser, inst, path, dut_name, test_id, start_ind=0, end_ind=1
     return(num_shorts, out_text)
 
 '''
-Measures continuity at intersections between two nodes, e.g. PZBIAS to SHIELD
+Measures continuity across two nodes, e.g. PZBIAS to SHIELD
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
     inst: PyVISA object that has been initialized (e.g. DMM or PSU)
@@ -706,7 +707,7 @@ Parameters:
     test_id: Test mode to run, one of the ones specified in CONT_DICT_NODE
 Returns:
     Tuple, with following parameters:
-        String "PASS" if no short, "FAIL" if shorted
+        Resistance across two nodes
         Output text (to be appended to summary file)
 '''
 def test_cont_node(ser, inst, path, dut_name, test_id):
@@ -732,12 +733,10 @@ def test_cont_node(ser, inst, path, dut_name, test_id):
     serialWriteWithDelay(ser, b'Z')                               # set rst switches to high-Z and disable muxes
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\n" + test_name + " does not have shorts\n"
-        print(out_text)
-        return("PASS", out_text)
     else:
         out_text += "\n" + test_name + " has shorts\n"
-        print(out_text)
-        return ("FAIL", out_text)
+    print(out_text)
+    return (val, out_text)
 
 '''
 Measures continuity between column and PZBIAS while toggling the row TFT's on and off (to +15V and -8V)
@@ -1401,7 +1400,7 @@ def main():
         out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
         out_string += "Loopback 2 resistance: " + str(loop_two_res) + " ohms" + "\n\n"
         output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res)
-        output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res)        
+        output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res)
         print("")
         with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
@@ -1418,11 +1417,12 @@ def main():
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
             file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
 
-    output_payload_gsheets_dict["Timestamp"]          = datetime_now.strftime('%Y-%m-%d_%H-%M-%S')
-    output_payload_gsheets_dict["Serial Number"]      = dut_name_input
-    output_payload_gsheets_dict["Array Type"]         = array_stage_text
-    output_payload_gsheets_dict["Array Module Stage"] = dut_module_stage_input
-    output_payload_gsheets_dict["TFT Type"]           = str(array_tft_type) + "T"
+    output_payload_gsheets_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d_%H-%M-%S')
+    output_payload_gsheets_dict["Tester Serial Number"] = ser.port
+    output_payload_gsheets_dict["Array Serial Number"]  = dut_name_input
+    output_payload_gsheets_dict["Array Type"]           = array_stage_text
+    output_payload_gsheets_dict["Array Module Stage"]   = dut_module_stage_input
+    output_payload_gsheets_dict["TFT Type"]             = str(array_tft_type) + "T"
 
     if (array_tft_type == 1):
         special_test_state = 0
@@ -1454,8 +1454,8 @@ def main():
 
             out_string += "\n" + test_cap_out[1]
             out_string += test_cont_col_to_pzbias_tfts_on_out[1]
-            output_payload_gsheets_dict["Cap Col to PZBIAS"] = check_cap_results(test_cap_out[0], MIN_PASS_CAP_COUNT)
-            output_payload_gsheets_dict["Col to PZBIAS with TFT's ON"] = check_cont_results(test_cont_col_to_pzbias_tfts_on_out[0], MAX_PASS_CONT_COUNT_TWO_DIM)
+            output_payload_gsheets_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
+            output_payload_gsheets_dict["Col to PZBIAS with TFT's ON (# shorts)"] = test_cont_col_to_pzbias_tfts_on_out[0]
 
         elif (special_test_state == 2):
             cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
@@ -1472,12 +1472,12 @@ def main():
             out_string += cont_col_to_shield[1] + "\n"
             out_string += cont_shield_to_pzbias[1]
 
-            output_payload_gsheets_dict["Row to Col"]    = check_cont_results(cont_row_to_column[0], MAX_PASS_CONT_COUNT_TWO_DIM)
-            output_payload_gsheets_dict["Row to PZBIAS"] = check_cont_results(cont_row_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-            output_payload_gsheets_dict["Row to SHIELD"] = check_cont_results(cont_row_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-            output_payload_gsheets_dict["Col to PZBIAS"] = check_cont_results(cont_col_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-            output_payload_gsheets_dict["Col to SHIELD"] = check_cont_results(cont_col_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-            output_payload_gsheets_dict["SHIELD to PZBIAS"] = cont_shield_to_pzbias[0]
+            output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
+            output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
+            output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
+            output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
+            output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
+            output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
         else:
             # these are tuples of (num shorts, output string)
             cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
@@ -1494,12 +1494,12 @@ def main():
             out_string += cont_col_to_shield[1] + "\n"
             out_string += cont_shield_to_pzbias[1]
 
-            output_payload_gsheets_dict["Row to Col"]    = check_cont_results(cont_row_to_column[0], MAX_PASS_CONT_COUNT_TWO_DIM)
-            output_payload_gsheets_dict["Row to PZBIAS"] = check_cont_results(cont_row_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-            output_payload_gsheets_dict["Row to SHIELD"] = check_cont_results(cont_row_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-            output_payload_gsheets_dict["Col to PZBIAS"] = check_cont_results(cont_col_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-            output_payload_gsheets_dict["Col to SHIELD"] = check_cont_results(cont_col_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-            output_payload_gsheets_dict["SHIELD to PZBIAS"] = cont_shield_to_pzbias[0]
+            output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
+            output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
+            output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
+            output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
+            output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
+            output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
 
             hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0 or cont_shield_to_pzbias[0]=="FAIL"
             response = ""
@@ -1529,25 +1529,25 @@ def main():
 
                 out_string += "\n" + test_cap_out[1]
                 out_string += test_cont_col_to_pzbias_tfts_on_out[1]
-                output_payload_gsheets_dict["Cap Col to PZBIAS"] = check_cap_results(test_cap_out[0], MIN_PASS_CAP_COUNT)
-                output_payload_gsheets_dict["Col to PZBIAS with TFT's ON"] = check_cont_results(test_cont_col_to_pzbias_tfts_on_out[0], MAX_PASS_CONT_COUNT_TWO_DIM)
+                output_payload_gsheets_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
+                output_payload_gsheets_dict["Col to PZBIAS with TFT's ON (# shorts)"] = test_cont_col_to_pzbias_tfts_on_out[0]
 
     # 3T array testing
     elif (array_tft_type == 3):
-        cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
-        cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
-        cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
-        cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
-        cont_col_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
-        cont_col_to_vdd    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VDD")
-        cont_col_to_vrst   = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VRST")
-        cont_rst_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_COL")
-        cont_rst_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_SHIELD")
-        cont_rst_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_PZBIAS")
-        cont_vdd_to_shield = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_SHIELD")
-        cont_vdd_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_PZBIAS")
-        cont_vrst_to_shield = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_SHIELD")
-        cont_vrst_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_PZBIAS")
+        cont_row_to_column    = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
+        cont_row_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
+        cont_row_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
+        cont_col_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
+        cont_col_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
+        cont_col_to_vdd       = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VDD")
+        cont_col_to_vrst      = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VRST")
+        cont_rst_to_column    = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_COL")
+        cont_rst_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_SHIELD")
+        cont_rst_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_PZBIAS")
+        cont_vdd_to_shield    = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_SHIELD")
+        cont_vdd_to_pzbias    = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_PZBIAS")
+        cont_vrst_to_shield   = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_SHIELD")
+        cont_vrst_to_pzbias   = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_PZBIAS")
         cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
 
         out_string += cont_row_to_column[1] + "\n"
@@ -1566,22 +1566,21 @@ def main():
         out_string += cont_vrst_to_pzbias[1] + "\n"
         out_string += cont_shield_to_pzbias[1]
 
-        output_payload_gsheets_dict["Row to Col"]    = check_cont_results(cont_row_to_column[0], MAX_PASS_CONT_COUNT_TWO_DIM)
-        output_payload_gsheets_dict["Row to PZBIAS"] = check_cont_results(cont_row_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-        output_payload_gsheets_dict["Row to SHIELD"] = check_cont_results(cont_row_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-        output_payload_gsheets_dict["Col to PZBIAS"] = check_cont_results(cont_col_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-        output_payload_gsheets_dict["Col to SHIELD"] = check_cont_results(cont_col_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-        output_payload_gsheets_dict["Col to Vdd"]    = check_cont_results(cont_col_to_vdd[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-        output_payload_gsheets_dict["Col to Vrst"]   = check_cont_results(cont_col_to_vrst[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-        output_payload_gsheets_dict["Rst to Col"]    = check_cont_results(cont_rst_to_column[0], MAX_PASS_CONT_COUNT_TWO_DIM)
-        output_payload_gsheets_dict["Rst to SHIELD"] = check_cont_results(cont_rst_to_shield[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-        output_payload_gsheets_dict["Rst to PZBIAS"] = check_cont_results(cont_rst_to_pzbias[0], MAX_PASS_CONT_COUNT_ONE_DIM)
-
-        output_payload_gsheets_dict["Vdd to SHIELD"] = cont_vdd_to_shield[0]
-        output_payload_gsheets_dict["Vdd to PZBIAS"] = cont_vdd_to_pzbias[0]
-        output_payload_gsheets_dict["Vrst to SHIELD"] = cont_vrst_to_shield[0]
-        output_payload_gsheets_dict["Vrst to PZBIAS"] = cont_vrst_to_pzbias[0]
-        output_payload_gsheets_dict["SHIELD to PZBIAS"] = cont_shield_to_pzbias[0]
+        output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
+        output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
+        output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
+        output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
+        output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
+        output_payload_gsheets_dict["Col to Vdd (# shorts)"]    = cont_col_to_vdd[0]
+        output_payload_gsheets_dict["Col to Vrst (# shorts)"]   = cont_col_to_vrst[0]
+        output_payload_gsheets_dict["Rst to Col (# shorts)"]    = cont_rst_to_column[0]
+        output_payload_gsheets_dict["Rst to SHIELD (# shorts)"] = cont_rst_to_shield[0]
+        output_payload_gsheets_dict["Rst to PZBIAS (# shorts)"] = cont_rst_to_pzbias[0]
+        output_payload_gsheets_dict["Vdd to SHIELD (ohm)"]      = cont_vdd_to_shield[0]
+        output_payload_gsheets_dict["Vdd to PZBIAS (ohm)"]      = cont_vdd_to_pzbias[0]
+        output_payload_gsheets_dict["Vrst to SHIELD (ohm)"]     = cont_vrst_to_shield[0]
+        output_payload_gsheets_dict["Vrst to PZBIAS (ohm)"]     = cont_vrst_to_pzbias[0]
+        output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
     else:
         print("Undefined array TFT type, skipping all tests...")
         pass
