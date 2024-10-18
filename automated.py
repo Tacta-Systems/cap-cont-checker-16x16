@@ -1400,6 +1400,8 @@ def main():
         (loop_one_res, loop_two_res) = test_loopback_resistance(ser, inst)
         out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
         out_string += "Loopback 2 resistance: " + str(loop_two_res) + " ohms" + "\n\n"
+        output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res)
+        output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res)        
         print("")
         with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
@@ -1410,6 +1412,8 @@ def main():
         loop_two_res = test_cont_loopback_two(ser, inst)
         out_string += str(loop_one_res[1]) + "\n"
         out_string += str(loop_two_res[1]) + "\n\n"
+        output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res[0])
+        output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res[0])
         with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
             file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
@@ -1419,8 +1423,6 @@ def main():
     output_payload_gsheets_dict["Array Type"]         = array_stage_text
     output_payload_gsheets_dict["Array Module Stage"] = dut_module_stage_input
     output_payload_gsheets_dict["TFT Type"]           = str(array_tft_type) + "T"
-    output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res[0])
-    output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res[0])
 
     if (array_tft_type == 1):
         special_test_state = 0
