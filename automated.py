@@ -69,7 +69,7 @@ PATH_BASE = "G:\\Shared drives\\Sensing\\Testing\\"
 USING_USB_PSU = True
 
 # TODO: load COM port, DMM serial number, and PSU serial number from config file, for scalability
-COM_PORT_DEFAULT = "COM3" # default hardcoded value, ok to change from setup to setup
+COM_PORT_DEFAULT = "COM5" # default hardcoded value, ok to change from setup to setup
 DMM_SERIAL_STRING  = "USB0::0x05E6::0x6500::04611761::INSTR"
 PSU_SERIAL_STRING  = "USB0::0x3121::0x0002::583H23104::INSTR"
 PSU_DELAY_TIME = 3 # seconds
@@ -555,7 +555,7 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
     out_text += "\nNo. of sensors below lower threshold of " + str(cap_bound_vals[0]) + "pF: " + str(num_below_threshold)
     out_text += "\nNo. of sensors above upper threshold of " + str(cap_bound_vals[1]) + "pF: " + str(num_above_threshold) + "\n"
     print("\n" + out_text)
-    return(0, out_text + "\n")
+    return(num_in_threshold, out_text + "\n")
 
 '''
 Two-dimensional test that measures continuity at every intersection, e.g. row to column.
