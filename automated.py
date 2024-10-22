@@ -112,7 +112,7 @@ MIN_PASS_CAP_COUNT  = 255
 # Google Sheets integration
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SPREADSHEET_ID = "1U0fXZTtxtd9mQf37cgzLy9CH4UH5T_lKMpFjCBX9qVs"
+SPREADSHEET_ID = "1EUixsb3LHau9IkTxp01H6DhMEBFxH59obI4z_YGYBko"
 ID_SHEET_NAME = "Sensor Modules"
 OUT_SHEET_NAME = "Tester Output"
 
@@ -480,7 +480,11 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
         print("ERROR: test mode not defined...")
         return (-1, "CAP TEST ERROR")
     test_name = test_mode_in
-    dut_name_full = dut_name_raw + dut_stage_raw
+    dut_name_full = ""
+    if (dut_stage_raw == ""):
+        dut_name_full = dut_name_raw
+    else:
+        dut_name_full = dut_name_raw + "_" + dut_stage_raw
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
     dut_name_segmented = dut_name_raw.split("_")
@@ -596,6 +600,7 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
     out_text += "Sensor " + dim1_name + " to " + dim2_name + " Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
+
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([dim1_name + " Index", dim2_name + " Index", dim1_name + " Res. to " + dim2_name + " (ohm)"])
@@ -664,6 +669,7 @@ def test_cont_one_dim(ser, inst, path, dut_name, test_id, start_ind=0, end_ind=1
     num_shorts = 0
     summary_text = ""
     out_text = ""
+
     inst.query('meas:res?')                              # set Keithley mode to resistance measurement
     time.sleep(DELAY_TIME_SERIAL)
     out_text += "Sensor " + test_name + " Detection Running..."
@@ -720,6 +726,7 @@ def test_cont_node(ser, inst, path, dut_name, test_id):
     out_text = "Sensor " + test_name + " Continuity Detection Running..."
     out_text += "\n"
     val = 0
+
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         file.write(test_name.lower() + " (ohms)\n")
         serialWriteWithDelay(ser, b'Z')                      # set rst switches to high-Z and disable muxes
@@ -759,6 +766,7 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
     out_text = ""
+
     inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
     time.sleep(DELAY_TIME_SERIAL)
     out_array = np.zeros((18, 17), dtype='U64')             # create string-typed numpy array
@@ -772,6 +780,7 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
     out_text += "Sensor Col to PZBIAS Continuity Detection with TFT's ON Running..."
     print(out_text)
     out_text += "\n"
+
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline="") as file: 
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Col. Res. to PZBIAS w/ TFTs ON (ohm)"])
@@ -1275,7 +1284,7 @@ def main():
         init_helper(set_psu_on(psu, PSU_DELAY_TIME))
 
     print("\nSetup Instructions:\n" +
-        "- Plug sensor into connector on primary \n" +
+        "- Plug sensor into connector on primary mux board\n" +
         "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
         "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
         "- Ensure power supply is ON\n")
@@ -1300,8 +1309,22 @@ def main():
     '''
     array_stage_raw = len(dut_name_input.rstrip('_').split('_'))
     array_stage_text = ARRAY_ASSY_TYPES[array_stage_raw]
-    override = input("Array type is '" + array_stage_text + "'. Press 'enter' to continue with tests, " +
-                     "or type 'change' to override: ")
+
+    valid_responses = ["change", ""]
+    override = ""
+    while True:
+        try:
+            override = input("Array type is '" + array_stage_text + "'. Press 'enter' to continue with tests, " +
+                        "or type 'change' to override: ")
+        except ValueError:
+            print("Error: please enter a valid response")
+            continue
+        if (override not in valid_responses):
+            print("Error: please enter a valid response")
+            continue
+        else:
+            break
+
     if (override.lower() == 'change'):
         query = "Please select from the following...\n"
         for key in ARRAY_ASSY_TYPES.keys():
@@ -1319,6 +1342,7 @@ def main():
             else:
                 break
         array_stage_text = ARRAY_ASSY_TYPES[array_stage_raw]
+    print("Running tests for '" + array_stage_text + "' array type...")
 
     path = PATH_BASE + array_stage_text.title() + "\\"
     if (os.path.exists(path + dut_name_input)):
@@ -1326,6 +1350,7 @@ def main():
     else:
         make_new_path = "Y"
         valid_responses = ["Y", "N"]
+        print("")
         while True:
             try:
                 make_new_path = input("Are you sure you want to make a new directory " + path + dut_name_input + "?\n" +
@@ -1346,8 +1371,10 @@ def main():
                     path += dut_name_input + "\\"
                 break
 
+    dut_name_full = dut_name_input
     dut_module_stage_input = ""
     if (array_stage_raw == 3):
+        dut_name_full += "_"
         while True:
             try:
                 dut_module_stage_input = input("\nPlease enter the array stage of assembly (e.g. onglass): ")
@@ -1360,7 +1387,7 @@ def main():
             else:
                 break
 
-    dut_name_full = dut_name_input + "_" +  dut_module_stage_input
+    dut_name_full += dut_module_stage_input
     print("Test data for " + dut_name_full + " will save to path " + path + "\n")
 
     # Query TFT type from Google Sheets with option to override
@@ -1413,7 +1440,7 @@ def main():
         out_string += str(loop_two_res[1]) + "\n\n"
         output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res[0])
         output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res[0])
-        with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
+        with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_" + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
             file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
 
@@ -1450,7 +1477,7 @@ def main():
                 print("Running cap test with default 1nF range...\n")
             test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_module_stage_input,
                                     "CAP_COL_TO_PZBIAS", array_stage_text, meas_range_input)
-            test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_input)
+            test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_full)
 
             out_string += "\n" + test_cap_out[1]
             out_string += test_cont_col_to_pzbias_tfts_on_out[1]
@@ -1525,8 +1552,7 @@ def main():
                     print("Running cap test with default 1nF range...\n")
                 test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_module_stage_input,
                                         "CAP_COL_TO_PZBIAS", array_stage_text, meas_range_input)
-                test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_input)
-
+                test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_full)
                 out_string += "\n" + test_cap_out[1]
                 out_string += test_cont_col_to_pzbias_tfts_on_out[1]
                 output_payload_gsheets_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
