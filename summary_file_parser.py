@@ -16,9 +16,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from httplib2 import Http
 
-
-# TODO: add code that detects the assembly stage of the array
-# TODO: add duplication detection for GSheets based on timestamp
+# TODO: add code that reformats timestamp to YYYY-MM-DD HH:MM:SS before putting in spreadsheet
 
 # Google Sheets integration
 # If modifying these scopes, delete the file token.json.
@@ -30,6 +28,7 @@ OUT_SHEET_NAME = "Tester Output"
 DICT_SUMMARY_TO_GSHEETS_KEYWORD = {
     "Col to PZBIAS Continuity Detection with TFT's ON" : "Col to PZBIAS with TFT's ON (# shorts)",
     "CAP_COL_TO_PZBIAS"     : "Cap Col to PZBIAS (# pass)",
+    "cap col to PZBIAS"     : "Cap Col to PZBIAS (# pass)",
     "Row to Col"            : "Row to Col (# shorts)",
     "Col to Row"            : "Row to Col (# shorts)",
     "Row to PZBIAS"         : "Row to PZBIAS (# shorts)",
@@ -404,8 +403,19 @@ def write_to_spreadsheet(creds, payload, range_out_start_col='A', range_out_end_
     return False
 
 '''
+Checks to see if a query (string) exists in a column of a Google Sheets spreadsheet
+Used here to check if a test has already been uploaded to GSheets by comparing timestamps
+Parameters:
+    creds:      Initialized Google Apps credential, with token.json initialized. Refer to 'main()' in
+                'google_sheets_example.py' for initialization example
+    query:      String object containing the query to search for
+    search_col: The column in the Google Sheet to search for the query in
+    spreadsheet_id : The Google Sheets spreadsheet ID, extracted from the URL (docs.google.com/spreadsheets/d/***)
+    out_sheet_name : The name of the sheet to write in, by default set to global variable
+Returns:
+    True if successfully found query in that column of the sheet, or False otherwise
 '''
-def check_for_duplicate_timestamp(creds, query, search_col='A',
+def check_if_query_in_sheet_column(creds, query, search_col='A',
                                   spreadsheet_id=SPREADSHEET_ID, sheet_name=OUT_SHEET_NAME):
     if (type(query) is not str):
         print("ERROR: query is not a string...")
@@ -431,49 +441,36 @@ def check_for_duplicate_timestamp(creds, query, search_col='A',
 
 def main():
     # new 1T backplane
-    filename = "G:\\Shared drives\\Sensing\\Testing\\Backplanes\\E2408-001-004-C6\\"
-    filename += "2024-10-18_11-35-42_E2408-001-004-C6__summary.txt"
+    # path = "G:\\Shared drives\\Sensing\\Testing\\Backplanes\\E2408-001-004-C6\\"
+    # filename = path + "2024-10-18_11-35-42_E2408-001-004-C6__summary.txt"
 
-    # old 1T module with cap/TFT
-    #filename = "G:\\Shared drives\\Sensing\\Testing\\Sensor Modules\\E2421-002-001-D5_T1_S-12\\"
-    #filename += "2024-09-24_11-32-10_E2421-002-001-D5_T1_S-12_Post_Flex_Bond_ETest_summary.txt"
-
-    # new 1T module with cap/TFT
-    #filename = "G:\\Shared drives\\Sensing\\Testing\\Sensor Modules\\E2421-002-001-D5_T1_S-12\\"
-    #filename += "2024-10-18_13-23-37_E2421-002-001-D5_T1_S-12_test_summary.txt"
-
-    # old 3T module
-    #filename = "G:\\Shared drives\\Sensing\\Testing\\Sensor Modules\\E2421-002-001-D6_T1_S-13\\"
-    #filename += "2024-09-24_11-36-36_E2421-002-001-D6_T1_S-13_Post_Flex_Bond_ETest_summary.txt"
-
-    # new 3T module
-    #filename = "G:\\Shared drives\\Sensing\\Testing\\Sensor Modules\\E2421-002-001-D6_T1_S-13\\"
-    #filename += "2024-10-16_16-37-20_E2421-002-001-D6_T1_S-13_test_summary.txt"
-    
-    # Initialize Google Sheets object
+    path = "G:\\Shared drives\\Sensing\\Testing\\Sensor Modules\\E2421-002-001-D5_T1_S-12\\"
     creds = get_creds()
-    chunks = split_file_into_chunks(filename)
-    header_vals = extract_header_from_chunk(chunks[0])
-    array_type = extract_type_from_serial_number(header_vals[1][1])
-    stage = extract_stage_from_serial_number(header_vals[1][1])
-    loopback_vals = extract_loopbacks_from_chunks(chunks)
-    test_vals = extract_vals_from_chunks(chunks)
-    
-    all_vals = header_vals + array_type + stage + loopback_vals + test_vals
-    
-    exists_in_sheet = check_for_duplicate_timestamp(creds, header_vals[0][1])
-    if (not exists_in_sheet):
-        for val in all_vals:
-            output_payload_gsheets_dict[val[0]] = val[1]
-        output_payload_gsheets = list(output_payload_gsheets_dict.values())
-        write_success = write_to_spreadsheet(creds, output_payload_gsheets)
-        if (write_success):
-            print("Successfully wrote data to Google Sheets!")
-        else:
-            print("ERROR: Could not write data to Google Sheets")
-    else:
-        print("Data already exists in the spreadsheet.\n" +
-              "Skipping test from array " + header_vals[1][1] + " at time " + header_vals[0][1])
+    filenames_w_path_raw = glob.glob(path + '*summary.txt')
+    for filename_w_path in filenames_w_path_raw:
+        filename = filename_w_path.split("\\")[-1]
+        timestamp_raw = filename.split("_")[0] + "_" + filename.split("_")[1]
+        timestamp = timestamp_raw.split("_")[0] + " " + timestamp_raw.split("_")[1].replace("-",":")
+        exists_in_sheet = check_if_query_in_sheet_column(creds, timestamp, 'A')
+        print(timestamp + " " +  str(exists_in_sheet))
+        if (not exists_in_sheet):
+            chunks = split_file_into_chunks(filename_w_path)
+            header_vals = extract_header_from_chunk(chunks[0])
+            array_type = extract_type_from_serial_number(header_vals[1][1])
+            stage = extract_stage_from_serial_number(header_vals[1][1])
+            loopback_vals = extract_loopbacks_from_chunks(chunks)
+            test_vals = extract_vals_from_chunks(chunks)
+
+            all_vals = header_vals + array_type + stage + loopback_vals + test_vals
+
+            for val in all_vals:
+                output_payload_gsheets_dict[val[0]] = val[1]
+            output_payload_gsheets = list(output_payload_gsheets_dict.values())
+            write_success = write_to_spreadsheet(creds, output_payload_gsheets)
+            if (write_success):
+                print("Successfully wrote data to Google Sheets!")
+            else:
+                print("ERROR: Could not write data to Google Sheets")
 
 if (__name__ == "__main__"):
     main()
