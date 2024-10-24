@@ -16,12 +16,12 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from httplib2 import Http
 
-# TODO: add code that reformats timestamp to YYYY-MM-DD HH:MM:SS before putting in spreadsheet
+# TODO: improve sensor array/backplane classification system such that arrays/backplanes can have stage names
 
 # Google Sheets integration
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SPREADSHEET_ID = "1U0fXZTtxtd9mQf37cgzLy9CH4UH5T_lKMpFjCBX9qVs" # Currently the test sheet
+SPREADSHEET_ID = "1EUixsb3LHau9IkTxp01H6DhMEBFxH59obI4z_YGYBko" # Currently the main "Sensing Inventory" sheet
 OUT_SHEET_NAME = "Tester Output"
 
 # Dictionary linking summary file keywords to Google Sheets keywords
@@ -215,28 +215,39 @@ Extracts number(s) (scientific notation or number) from a string
 Parameters:
     string_in: String to search in
 Returns:
-    List of numbers as floats
+    List of numbers as floats. If the number is infinity, it appends 9.9E37
 '''
 def extract_num_from_str(string_in):
     out_array = []
     for str in string_in.split():
-        try:
-            out_array.append(float(str.replace(",","")))
-        except ValueError:
-            pass
+        if (str == "inf"):
+            out_array.append(9.9e+37)
+        else:
+            try:
+                out_array.append(float(str.replace(",","")))
+            except ValueError:
+                pass
     return out_array
 
 '''
 Extracts the header (timestamp, arrayid, arraytype)
+Old files (pre-09-2024) have the array id first then the timestamp, newer files have it the other way around.
 Parameters:
     chunk: should be the first chunk from the file, containing timestamp, arrayid, arraytype
 Returns:
     Array with tuples of "timestamp", "Array Serial Number", "TFT Type" and their corresponding values
 '''
 def extract_header_from_chunk(chunk):
-    timestamp = chunk[0][:-1]
-    array_id   = chunk[1][10:-1]
-    tft_type = chunk[2][12:-1]
+    timestamp = ""
+    array_id = ""
+    tft_type = ""
+    if ("ArrayID" in chunk[0]):
+        timestamp = chunk[1][:-1]
+        array_id = chunk[0][9:-1]
+    else:
+        timestamp = chunk[0][:-1]
+        array_id   = chunk[1][10:-1]
+        tft_type = chunk[2][12:-1]
     return [("Timestamp", timestamp), ("Array Serial Number", array_id), ("TFT Type", tft_type)]
 
 '''
@@ -254,7 +265,7 @@ def extract_vals_from_chunks(chunks, dict=DICT_SUMMARY_TO_GSHEETS_KEYWORD):
     for chunk in chunks:
         if (len(chunk) > 1):
             str_in_dict_keys = check_str_in_dict_keys(chunk[0])
-            if (str_in_dict_keys[0] and "Sensor" in chunk[0] or "Ran" in chunk[0] and len(chunk)>1):
+            if (str_in_dict_keys[0] and len(chunk)>1 and ("Sensor" in chunk[0] or "Ran" in chunk[0])):
                 value = extract_num_from_str(chunk[1])[0] # extracts the first number from the second line of the chunk
                 out_array.append((dict[str_in_dict_keys[1]], value))
     return out_array
@@ -274,6 +285,13 @@ Returns:
     Array with tuples of ("Loopback resistance", value)
 '''
 def extract_loopbacks_from_chunks(chunks):
+    # check if the file has loopback values at all
+    contains_loopback_vals = False
+    for chunk in chunks:
+        if "Loopback" in chunk[0]:
+            contains_loopback_vals = True
+    if (not contains_loopback_vals):
+        return [("Loopback One (ohm)", ""), ("Loopback Two (ohm)", "")]
     chunk1 = chunks[2]
     chunk2 = chunks[3]
     loopback_one = -1
@@ -443,34 +461,39 @@ def main():
     # new 1T backplane
     # path = "G:\\Shared drives\\Sensing\\Testing\\Backplanes\\E2408-001-004-C6\\"
     # filename = path + "2024-10-18_11-35-42_E2408-001-004-C6__summary.txt"
-
-    path = "G:\\Shared drives\\Sensing\\Testing\\Sensor Modules\\E2421-002-001-D5_T1_S-12\\"
     creds = get_creds()
-    filenames_w_path_raw = glob.glob(path + '*summary.txt')
-    for filename_w_path in filenames_w_path_raw:
-        filename = filename_w_path.split("\\")[-1]
-        timestamp_raw = filename.split("_")[0] + "_" + filename.split("_")[1]
-        timestamp = timestamp_raw.split("_")[0] + " " + timestamp_raw.split("_")[1].replace("-",":")
-        exists_in_sheet = check_if_query_in_sheet_column(creds, timestamp, 'A')
-        print(timestamp + " " +  str(exists_in_sheet))
-        if (not exists_in_sheet):
-            chunks = split_file_into_chunks(filename_w_path)
-            header_vals = extract_header_from_chunk(chunks[0])
-            array_type = extract_type_from_serial_number(header_vals[1][1])
-            stage = extract_stage_from_serial_number(header_vals[1][1])
-            loopback_vals = extract_loopbacks_from_chunks(chunks)
-            test_vals = extract_vals_from_chunks(chunks)
 
-            all_vals = header_vals + array_type + stage + loopback_vals + test_vals
+    path_root = "G:\\Shared drives\\Sensing\\Testing\\Sensor Arrays\\"
+    for directory in os.listdir(path_root):
+        path = path_root + directory + "\\"
+        filenames_w_path_raw = glob.glob(path + '*summary.txt')
+        print("\n" + directory)
+        for filename_w_path in filenames_w_path_raw:
+            filename = filename_w_path.split("\\")[-1]
+            timestamp_raw = filename.split("_")[0] + "_" + filename.split("_")[1]
+            timestamp = timestamp_raw.split("_")[0] + " " + timestamp_raw.split("_")[1].replace("-",":")
+            exists_in_sheet = check_if_query_in_sheet_column(creds, timestamp, 'A')
+            print("- " + timestamp + " " +  str(exists_in_sheet))
+            if (not exists_in_sheet):
+                chunks = split_file_into_chunks(filename_w_path)
+                header_vals = extract_header_from_chunk(chunks[0])
+                array_type = extract_type_from_serial_number(header_vals[1][1])
+                stage = extract_stage_from_serial_number(header_vals[1][1])
+                loopback_vals = extract_loopbacks_from_chunks(chunks)
+                test_vals = extract_vals_from_chunks(chunks)
 
-            for val in all_vals:
-                output_payload_gsheets_dict[val[0]] = val[1]
-            output_payload_gsheets = list(output_payload_gsheets_dict.values())
-            write_success = write_to_spreadsheet(creds, output_payload_gsheets)
-            if (write_success):
-                print("Successfully wrote data to Google Sheets!")
-            else:
-                print("ERROR: Could not write data to Google Sheets")
+                all_vals = header_vals + array_type + stage + loopback_vals + test_vals
+
+                for val in all_vals:
+                    output_payload_gsheets_dict[val[0]] = val[1]
+                output_payload_gsheets = list(output_payload_gsheets_dict.values())
+                write_success = write_to_spreadsheet(creds, output_payload_gsheets)
+                if (write_success):
+                    print("- Successfully wrote data to Google Sheets!")
+                else:
+                    print("- ERROR: Could not write data to Google Sheets")
+                for val in output_payload_gsheets_dict.keys():
+                    output_payload_gsheets_dict[val] = None
 
 if (__name__ == "__main__"):
     main()
