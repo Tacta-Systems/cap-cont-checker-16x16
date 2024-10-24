@@ -16,11 +16,14 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from httplib2 import Http
 
+
+# TODO: add code that detects the assembly stage of the array
+# TODO: add duplication detection for GSheets based on timestamp
+
 # Google Sheets integration
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SPREADSHEET_ID = "1EUixsb3LHau9IkTxp01H6DhMEBFxH59obI4z_YGYBko"
-ID_SHEET_NAME = "Sensor Modules"
+SPREADSHEET_ID = "1U0fXZTtxtd9mQf37cgzLy9CH4UH5T_lKMpFjCBX9qVs" # Currently the test sheet
 OUT_SHEET_NAME = "Tester Output"
 
 # Dictionary linking summary file keywords to Google Sheets keywords
@@ -71,6 +74,45 @@ DICT_SUMMARY_TO_GSHEETS_KEYWORD = {
     "Vrst to PZBIAS"        : "Vrst to PZBIAS (ohm)",
     "PZBIAS to Vrst"        : "Vrst to PZBIAS (ohm)",
     "CONT_VRST_TO_PZBIAS"   : "Vrst to PZBIAS (ohm)"
+}
+
+ARRAY_ASSY_TYPES = {
+    1: "Backplanes",
+    2: "Sensor Arrays",
+    3: "Sensor Modules"
+}
+
+'''
+Dictionary used to store results from tests
+Results are uploaded to Google Sheets in this order
+Tests that were not run will be uploaded to GSheets as blank.
+'''
+output_payload_gsheets_dict = {
+    "Timestamp"            : "",
+    "Tester Serial Number" : "",
+    "Array Serial Number"  : "",
+    "Array Type"           : "",
+    "Array Module Stage"   : "",
+    "TFT Type"             : "",
+    "Loopback One (ohm)"   : "",
+    "Loopback Two (ohm)"   : "",
+    "Cap Col to PZBIAS (# pass)"   : "",
+    "Col to PZBIAS with TFT's ON (# shorts)" : "",
+    "Row to Col (# shorts)"    : "",
+    "Rst to Col (# shorts)"    : "",
+    "Row to PZBIAS (# shorts)" : "",
+    "Row to SHIELD (# shorts)" : "",
+    "Col to PZBIAS (# shorts)" : "",
+    "Col to SHIELD (# shorts)" : "",
+    "Col to Vdd (# shorts)"    : "",
+    "Col to Vrst (# shorts)"   : "",
+    "Rst to SHIELD (# shorts)" : "",
+    "Rst to PZBIAS (# shorts)" : "",
+    "SHIELD to PZBIAS (ohm)"   : "",
+    "Vdd to SHIELD (ohm)"      : "",
+    "Vdd to PZBIAS (ohm)"      : "",
+    "Vrst to SHIELD (ohm)"     : "",
+    "Vrst to PZBIAS (ohm)"     : ""
 }
 
 # helper functions for file compare/diff
@@ -230,7 +272,7 @@ Parameters:
     chunks: a list of raw text "chunks", which themselves are lists of each line in the chunk
     e.g. [['chunk1_line', 'chunk1_line', 'chunk1_line'], ['chunk2_line', 'chunk2_line', 'chunk2_line']]
 Returns:
-    Array with tuples of (loopback resistance, value)
+    Array with tuples of ("Loopback resistance", value)
 '''
 def extract_loopbacks_from_chunks(chunks):
     chunk1 = chunks[2]
@@ -254,7 +296,13 @@ def extract_loopbacks_from_chunks(chunks):
     return [("Loopback One (ohm)", loopback_one), ("Loopback Two (ohm)", loopback_two)]
 
 '''
-
+Extracts the module stage of a sensor module from the given input string
+If the sensor module doesn't have a stage, or if it's an array or a backplane,
+returns an empty string
+Parameters:
+    string_in: the string to look through
+Outputs:
+    Array with tuple of ("Array module stage", stage); stage is empty is not a module/no stage string
 '''
 def extract_stage_from_serial_number(string_in):
     out = ""
@@ -265,6 +313,121 @@ def extract_stage_from_serial_number(string_in):
     if (len(indices) > 2):
         out = string_in[indices[2]+1:]
     return [("Array Module Stage", out)]
+
+'''
+Extracts the assembly type of a sensor (backplane, array, module) from the given input string
+Looks it up in a dictionary that's ARRAY_ASSY_TYPES by default
+Parameters:
+    string_in: the string to look through
+Outputs:
+    Array with tuple of ("Array type", type)
+'''
+def extract_type_from_serial_number(string_in, dict=ARRAY_ASSY_TYPES):
+    out = ""
+    string_segments = list(filter(None, string_in.split("_")))
+    return [("Array Type", dict[min(3,len(string_segments))])]
+
+'''
+Returns a Python OAuth credential object that can be used to access Google Apps services,
+in particular Google Sheets.
+Parameters:
+    token_filename : String path to the OAuth token, generated in Google Apps
+    cred_filename  : String path to the OAuth secret credential file, which MUST BE KEPT PRIvATE
+    scopes         : List containing link to the Google application to access
+Returns:
+    Python OAuth credentials object, or None if initialization error
+'''
+def get_creds(token_filename="token.json", cred_filename="credentials.json", scopes=SCOPES):
+  try:
+    creds = None
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists(token_filename):
+      creds = Credentials.from_authorized_user_file(token_filename, scopes)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+      if creds and creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+      else:
+        flow = InstalledAppFlow.from_client_secrets_file(
+            cred_filename, scopes
+        )
+        creds = flow.run_local_server(port=0)
+      # Save the credentials for the next run
+      with open(token_filename, "w") as token:
+        token.write(creds.to_json())
+    return creds
+  except HttpError as err:
+    print(err)
+    return None
+
+'''
+Writes a row to a spreadsheet, in particular the results sheet of the 'Sensing Inventory' spreadsheet.
+This payload is a 1D row array containing the desired values to write to the sheet.
+Data is appended after the last data-containing row of the spreadsheet.
+Parameters:
+    creds:      Initialized Google Apps credential, with token.json initialized. Refer to 'main()' in
+                'google_sheets_example.py' for initialization example
+    payload:    a 1D array containing the data to write to the spreadsheet, in string format
+    range_out_start_col: The first (leftmost) column to start writing to
+    range_out_end_Col  : The last (rightmost) column to end writing to
+    spreadsheet_id : The Google Sheets spreadsheet ID, extracted from the URL (docs.google.com/spreadsheets/d/***)
+    out_sheet_name : The name of the sheet to write in, by default set to global variable
+Returns:
+    True if successfully written, or False otherwise
+'''
+def write_to_spreadsheet(creds, payload, range_out_start_col='A', range_out_end_col='E',
+                         spreadsheet_id=SPREADSHEET_ID, out_sheet_name=OUT_SHEET_NAME):
+  if (type(payload) is not list):
+    print("ERROR: payload is not a list...")
+    return False
+  try:
+    service = build("sheets", "v4", credentials=creds)
+     # Prepare the request body with the values to append
+    body_out = {
+        'values': [payload]
+    }
+    range_name_out = f'{out_sheet_name}!' + range_out_start_col + ':' + range_out_end_col
+    # Call the API to append the new row
+    sheet = service.spreadsheets()
+    result = sheet.values().append(
+        spreadsheetId=spreadsheet_id,
+        range=range_name_out,
+        valueInputOption='RAW',
+        insertDataOption='INSERT_ROWS',
+        body=body_out
+    ).execute()
+    return True
+  except HttpError as err:
+    print(err)
+    return False
+
+'''
+'''
+def check_for_duplicate_timestamp(creds, query, search_col='A',
+                                  spreadsheet_id=SPREADSHEET_ID, sheet_name=OUT_SHEET_NAME):
+    if (type(query) is not str):
+        print("ERROR: query is not a string...")
+        return False
+    try:
+        service = build("sheets", "v4", credentials=creds)
+        sheet = service.spreadsheets()
+        # Define the range (A1 notation) to append the data at the end of the sheet
+        range_name = f'{sheet_name}!' + search_col + ':' + search_col
+        result = (
+            sheet.values()
+            .get(spreadsheetId=spreadsheet_id, range=range_name)
+            .execute()
+        )
+        values_result = result.get("values", [])
+        for value in values_result:
+            if (value[0] == query):
+                return True
+        return False
+    except HttpError as err:
+        print(err)
+        return False
 
 def main():
     # new 1T backplane
@@ -286,17 +449,31 @@ def main():
     # new 3T module
     #filename = "G:\\Shared drives\\Sensing\\Testing\\Sensor Modules\\E2421-002-001-D6_T1_S-13\\"
     #filename += "2024-10-16_16-37-20_E2421-002-001-D6_T1_S-13_test_summary.txt"
-
+    
+    # Initialize Google Sheets object
+    creds = get_creds()
     chunks = split_file_into_chunks(filename)
     header_vals = extract_header_from_chunk(chunks[0])
+    array_type = extract_type_from_serial_number(header_vals[1][1])
     stage = extract_stage_from_serial_number(header_vals[1][1])
     loopback_vals = extract_loopbacks_from_chunks(chunks)
     test_vals = extract_vals_from_chunks(chunks)
-
-    all_vals = header_vals + stage + loopback_vals + test_vals
-
-    for val in all_vals:
-        print(val)
+    
+    all_vals = header_vals + array_type + stage + loopback_vals + test_vals
+    
+    exists_in_sheet = check_for_duplicate_timestamp(creds, header_vals[0][1])
+    if (not exists_in_sheet):
+        for val in all_vals:
+            output_payload_gsheets_dict[val[0]] = val[1]
+        output_payload_gsheets = list(output_payload_gsheets_dict.values())
+        write_success = write_to_spreadsheet(creds, output_payload_gsheets)
+        if (write_success):
+            print("Successfully wrote data to Google Sheets!")
+        else:
+            print("ERROR: Could not write data to Google Sheets")
+    else:
+        print("Data already exists in the spreadsheet.\n" +
+              "Skipping test from array " + header_vals[1][1] + " at time " + header_vals[0][1])
 
 if (__name__ == "__main__"):
     main()
