@@ -1444,7 +1444,7 @@ def main():
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
             file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
 
-    output_payload_gsheets_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d_%H-%M-%S')
+    output_payload_gsheets_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d %H:%M:%S')
     output_payload_gsheets_dict["Tester Serial Number"] = ser.port
     output_payload_gsheets_dict["Array Serial Number"]  = dut_name_input
     output_payload_gsheets_dict["Array Type"]           = array_stage_text
