@@ -49,6 +49,10 @@ import numpy as np
 from collections import defaultdict
 from tkinter import filedialog
 
+# TODO: add stage input option for backplane and sensor module (operator can skip entry)
+# TODO: add loopback result checker -- prompt user if test should continue if a loopback is open
+# TODO: add input checker for 1T test type -- press 'enter', '1', or '2'
+
 # silence the PyGame import startup message
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
@@ -906,17 +910,18 @@ def test_loopback_resistance(ser, inst, num_counts=10, loop1_name="loop1.wav", l
             return (val1, val2)
 
 '''
-Measures Loopback A resistance
+Measures Loopback 1 resistance
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
     inst: PyVISA object that has been initialized (e.g. DMM or PSU)
 Returns:
-    Loopback A resistance (float)
+    Tuple containing:
+        Loopback 1 resistance (float)
+        String text output
 '''
 def test_cont_loopback_one(ser, inst):
-    out_text = "Sensor Loopback One Continuity Detection Running..."
-    out_text += "\n"
     val = 0
+    out_text = "Loopback 1 resistance: "
     inst.write('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
     time.sleep(DELAY_TIME_INST)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
@@ -930,25 +935,22 @@ def test_cont_loopback_one(ser, inst):
     time.sleep(DELAY_TIME_SERIAL)
     inst.write('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
     time.sleep(DELAY_TIME_INST)
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nLoopback one is OPEN!\n"
-    else:
-        out_text += "\nLoopback one measures resistance!\n"
     print(out_text)
     return(val, out_text)
 
 '''
-Measures Loopback A resistance
+Measures Loopback 2 resistance
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
     inst: PyVISA object that has been initialized (e.g. DMM or PSU)
 Returns:
-    Loopback A resistance (float)
+    Tuple containing:
+        Loopback 2 resistance (float)
+        String text output
 '''
 def test_cont_loopback_two(ser, inst):
-    out_text = "Sensor Loopback Two Continuity Detection Running..."
-    out_text += "\n"
     val = 0
+    out_text = "Loopback 2 resistance: "
     inst.write('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
     time.sleep(DELAY_TIME_INST)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
@@ -962,10 +964,6 @@ def test_cont_loopback_two(ser, inst):
     time.sleep(DELAY_TIME_SERIAL)
     inst.write('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
     time.sleep(DELAY_TIME_INST)
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
-        out_text += "\nLoopback two is OPEN!\n"
-    else:
-        out_text += "\nLoopback two measures resistance!\n"
     print(out_text)
     return(val, out_text)
 
@@ -1436,6 +1434,7 @@ def main():
         loop_one_res = test_cont_loopback_one(ser, inst)
         time.sleep(1)
         loop_two_res = test_cont_loopback_two(ser, inst)
+        print("")
         out_string += str(loop_one_res[1]) + "\n"
         out_string += str(loop_two_res[1]) + "\n\n"
         output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res[0])

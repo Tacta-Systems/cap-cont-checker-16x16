@@ -17,6 +17,7 @@ from googleapiclient.errors import HttpError
 from httplib2 import Http
 
 # TODO: improve sensor array/backplane classification system such that arrays/backplanes can have stage names
+# NOTE: if running this script too often, Google Sheets queries may not be handled.
 
 # Google Sheets integration
 # If modifying these scopes, delete the file token.json.
