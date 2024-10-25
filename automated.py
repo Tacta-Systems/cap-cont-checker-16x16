@@ -202,6 +202,79 @@ output_payload_gsheets_dict = {
     "Vrst to PZBIAS (ohm)"     : ""
 }
 
+
+# Helper functions for overall program
+'''
+Call in a loop to create terminal progress bar
+Source: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
+@params:
+    iteration   - Required  : current iteration (Int)
+    total       - Required  : total iterations (Int)
+    prefix      - Optional  : prefix string (Str)
+    suffix      - Optional  : suffix string (Str)
+    decimals    - Optional  : positive number of decimals in percent complete (Int)
+    length      - Optional  : character length of bar (Int)
+    fill        - Optional  : bar fill character (Str)
+    printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+'''
+def print_progress_bar(iteration, total, prefix='', suffix='', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total:
+        print()
+
+'''
+Queries user for an input until a valid response is given (e.g. response is in the parameter dictionary)
+Input is case agnostic, but returned value is in upper case.
+Prompt will substitute empty keys "" with 'enter', as inputting an 'enter' key will return a blank character
+Parameters:
+    options: either a dictionary of (valid_response_key: corresponding_value), e.g. (1: "test one"), with keys as either string or int
+             or a list of acceptable values, int or string
+Returns:
+    String with valid response that is in the dictionary keys, converted to upper case
+'''
+def query_valid_response(options):
+    response_in = ""
+    query_text = "Please enter one of the following:\n"
+    valid_responses = []
+    if (type(options) is list):
+        for option in options:
+            valid_responses.append(str(option).upper())
+        for item in valid_responses:
+            if (item == ""):
+                item = "enter"
+            query_text += "- '" + str(item) + "'\n"
+    elif (type(options) is dict):
+        new_options = {}
+        for key in list(options.keys()):
+            new_options[str(key).upper()] = options[key]
+        for option in new_options:
+            valid_responses.append(str(option))
+        for item in valid_responses:
+            item_print = item
+            if (item == ""):
+                item_print = "'enter'"
+            query_text += "- " + str(item_print) + " to '" + str(new_options[item]) + "'\n"
+    else:
+        print("ERROR: invalid options to query...")
+        return None
+
+    while True:
+        try:
+            response_in = input(query_text)
+        except ValueError:
+            print("Error: please enter a valid response")
+            continue
+        if (response_in.upper() not in valid_responses):
+            print("Error: please enter a valid response")
+            continue
+        else:
+            return response_in.upper()
+
+# Init and set functions for test equipment
 '''
 Helper function that checks if a newly initialized hardware object (e.g. serial, multimeter, PSU) is null
 If object is null, exit program. If not, return the object.
@@ -247,17 +320,8 @@ def init_serial(com_port=""):
             print("ERROR: No serial ports/Arduinos detected. Exiting in 5 seconds...")
             time.sleep(5)
             exit()
-        while True:
-            try:
-                port_in = input("Please select the Arduino COM port COM[x]: ").upper()
-            except ValueError:
-                print("Sorry, please select a valid port COM[x]")
-                continue
-            if (port_in not in list_of_ports):
-                print("Sorry, please select a valid port COM[x]")
-                continue
-            else:
-                break
+        print("Selecting the Arduino COM port COM[x],")
+        port_in = query_valid_response(list_of_ports)
         ser.port = port_in
     try:
         ser.open()
@@ -367,28 +431,6 @@ def set_psu_off(psu, psu_wait=PSU_DELAY_TIME):
         return None
 
 '''
-Call in a loop to create terminal progress bar
-Source: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
-@params:
-    iteration   - Required  : current iteration (Int)
-    total       - Required  : total iterations (Int)
-    prefix      - Optional  : prefix string (Str)
-    suffix      - Optional  : suffix string (Str)
-    decimals    - Optional  : positive number of decimals in percent complete (Int)
-    length      - Optional  : character length of bar (Int)
-    fill        - Optional  : bar fill character (Str)
-    printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
-'''
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
-
-'''
 States:
 the reason we're using these names is because we're limited to one character + can't use the letters 'A' - 'F'.
 - 'O' for continuity check mode
@@ -424,7 +466,7 @@ Parameters:
     delay: Amount of time to wait after writing serial command
 Returns: None
 '''
-def serialWriteWithDelay(ser, byte, delay=DELAY_TIME_SERIAL):
+def serial_write_with_delay(ser, byte, delay=DELAY_TIME_SERIAL):
     ser.write(byte)
     time.sleep(delay)
 
@@ -436,7 +478,7 @@ Parameters:
     delay: Amount of time to wait after writing VISA command
 Returns: None
 '''
-def instWriteWithDelay(inst, writeString, delay=DELAY_TIME_INST):
+def inst_write_with_delay(inst, writeString, delay=DELAY_TIME_INST):
     inst.write(writeString)
     time.sleep(delay)
 
@@ -448,11 +490,12 @@ Parameters:
     delay: Amount of time to wait after writing VISA command
 Returns: None
 '''
-def instQueryWithDelay(inst, queryString, delay=DELAY_TIME_INST):
+def inst_query_with_delay(inst, queryString, delay=DELAY_TIME_INST):
     val = inst.query(queryString)
     time.sleep(delay)
     return val
 
+# Test routines
 '''
 Two-dimensional test measures capacitance between column and one other node 
 specified in the 'test_mode_in' parameter (linked to the CAP_FN_DICT dictionary).
@@ -504,10 +547,10 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
     with open(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
-        instWriteWithDelay(inst, 'sens:cap:rang ' + meas_range)
-        instQueryWithDelay(inst, 'meas:cap?')
+        inst_write_with_delay(inst, 'sens:cap:rang ' + meas_range)
+        inst_query_with_delay(inst, 'meas:cap?')
         print("Sensor " + test_name + " Check Running...")
-        printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
+        print_progress_bar(0, 16, suffix = "Row 0/16", length = 16)
         out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
         out_array_delta[1] = ["C" + str(i) for i in range(0, 17)]  # set cols of output array to be "C1"..."C16"
         for i in range(len(out_array_delta)):
@@ -523,25 +566,25 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
 
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                serialWriteWithDelay(ser, b'Z')                         # sets all mux switches to high-Z mode
-                serialWriteWithDelay(ser, CAP_FN_DICT[test_name])       # pre-sets the secondary muxes to the right state for cap measurement
-                serialWriteWithDelay(ser, b'R')                         # sets primary mux to row write mode
-                serialWriteWithDelay(ser, bytes(hex(row)[2:], 'utf-8')) # sets row address
-                serialWriteWithDelay(ser, b'L')                         # sets primary mux to column write mode
-                serialWriteWithDelay(ser, bytes(hex(col)[2:], 'utf-8')) # sets column address
-                serialWriteWithDelay(ser, b'I')                         # sets primary row mux to "binary counter disable mode", which sets all TFT's off (to -8V)
+                serial_write_with_delay(ser, b'Z')                         # sets all mux switches to high-Z mode
+                serial_write_with_delay(ser, CAP_FN_DICT[test_name])       # pre-sets the secondary muxes to the right state for cap measurement
+                serial_write_with_delay(ser, b'R')                         # sets primary mux to row write mode
+                serial_write_with_delay(ser, bytes(hex(row)[2:], 'utf-8')) # sets row address
+                serial_write_with_delay(ser, b'L')                         # sets primary mux to column write mode
+                serial_write_with_delay(ser, bytes(hex(col)[2:], 'utf-8')) # sets column address
+                serial_write_with_delay(ser, b'I')                         # sets primary row mux to "binary counter disable mode", which sets all TFT's off (to -8V)
 
-                tft_off_meas = float(instQueryWithDelay(inst, 'meas:cap?'))
+                tft_off_meas = float(inst_query_with_delay(inst, 'meas:cap?'))
 
-                serialWriteWithDelay(ser, b'Z')                         # sets all mux switches to high-Z mode
-                serialWriteWithDelay(ser, CAP_FN_DICT[test_name])       # pre-sets the secondary muxes to the right state for cap measurement
-                serialWriteWithDelay(ser, b'R')                         # sets primary mux to row write mode
-                serialWriteWithDelay(ser, bytes(hex(row)[2:], 'utf-8')) # sets row address
-                serialWriteWithDelay(ser, b'L')                         # sets primary mux to column write mode
-                serialWriteWithDelay(ser, bytes(hex(col)[2:], 'utf-8')) # sets column address
-                serialWriteWithDelay(ser, b'P')                         # sets primary row mux to capacitance check mode
+                serial_write_with_delay(ser, b'Z')                         # sets all mux switches to high-Z mode
+                serial_write_with_delay(ser, CAP_FN_DICT[test_name])       # pre-sets the secondary muxes to the right state for cap measurement
+                serial_write_with_delay(ser, b'R')                         # sets primary mux to row write mode
+                serial_write_with_delay(ser, bytes(hex(row)[2:], 'utf-8')) # sets row address
+                serial_write_with_delay(ser, b'L')                         # sets primary mux to column write mode
+                serial_write_with_delay(ser, bytes(hex(col)[2:], 'utf-8')) # sets column address
+                serial_write_with_delay(ser, b'P')                         # sets primary row mux to capacitance check mode
 
-                tft_on_meas = float(instQueryWithDelay(inst, 'meas:cap?'))
+                tft_on_meas = float(inst_query_with_delay(inst, 'meas:cap?'))
                 tft_cal_meas = tft_on_meas - tft_off_meas
                 if (tft_cal_meas*1e12 < cap_bound_vals[0]):
                     num_below_threshold += 1
@@ -552,8 +595,8 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
                 out_array_delta[(16-row)+1][col+1] = tft_cal_meas*1e12
                 out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
-            printProgressBar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    serialWriteWithDelay(ser, b'Z')
+            print_progress_bar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
+    serial_write_with_delay(ser, b'Z')
     out_array_delta = np.delete(out_array_delta, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
     out_array_on = np.delete(out_array_on, (0), axis=0)
@@ -608,24 +651,24 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([dim1_name + " Index", dim2_name + " Index", dim1_name + " Res. to " + dim2_name + " (ohm)"])
-        printProgressBar(0, 16, suffix = dim1_name + " 0/16", length = 16)
+        print_progress_bar(0, 16, suffix = dim1_name + " 0/16", length = 16)
         time.sleep(DELAY_TIME_SERIAL)
         for dim1_cnt in range(start_dim1, end_dim1):
             for dim2_cnt in range(start_dim2, end_dim2):
-                serialWriteWithDelay(ser, b'Z')                              # set row switches to high-Z and disable muxes
-                serialWriteWithDelay(ser, CONT_DICT_TWO_DIM[test_name][0])   # set secondary mux to specified input mode
-                serialWriteWithDelay(ser, CONT_DICT_TWO_DIM[test_name][1])   # set mode to dim1 write mode
-                serialWriteWithDelay(ser, bytes(hex(dim1_cnt)[2:], 'utf-8')) # write dim1 index
-                serialWriteWithDelay(ser, CONT_DICT_TWO_DIM[test_name][2])   # set mode to dim2 write mode
-                serialWriteWithDelay(ser, bytes(hex(dim2_cnt)[2:], 'utf-8')) # write dim2 index
-                serialWriteWithDelay(ser, b'O')                              # set mode to continuity check
-                val = float(instQueryWithDelay(inst, 'meas:res?'))           # read resistance measurement
+                serial_write_with_delay(ser, b'Z')                              # set row switches to high-Z and disable muxes
+                serial_write_with_delay(ser, CONT_DICT_TWO_DIM[test_name][0])   # set secondary mux to specified input mode
+                serial_write_with_delay(ser, CONT_DICT_TWO_DIM[test_name][1])   # set mode to dim1 write mode
+                serial_write_with_delay(ser, bytes(hex(dim1_cnt)[2:], 'utf-8')) # write dim1 index
+                serial_write_with_delay(ser, CONT_DICT_TWO_DIM[test_name][2])   # set mode to dim2 write mode
+                serial_write_with_delay(ser, bytes(hex(dim2_cnt)[2:], 'utf-8')) # write dim2 index
+                serial_write_with_delay(ser, b'O')                              # set mode to continuity check
+                val = float(inst_query_with_delay(inst, 'meas:res?'))           # read resistance measurement
                 out_array[(16-dim1_cnt)+1][dim2_cnt+1] = val
                 if (val < RES_SHORT_THRESHOLD_ROWCOL):
                     num_shorts += 1
                 writer.writerow([str(dim1_cnt+1), str(dim2_cnt+1), val])
-            printProgressBar(dim1_cnt+1, 16, suffix = dim1_name + " " + str(dim1_cnt+1) + "/16", length = 16)
-    serialWriteWithDelay(ser, b'Z')                                          # set all mux enables + mux channels to OFF
+            print_progress_bar(dim1_cnt+1, 16, suffix = dim1_name + " " + str(dim1_cnt+1) + "/16", length = 16)
+    serial_write_with_delay(ser, b'Z')                                          # set all mux enables + mux channels to OFF
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
     num_shorts_text = "There were " + str(num_shorts) + " " + dim1_name + "/" + dim2_name + " short(s)"
@@ -682,22 +725,22 @@ def test_cont_one_dim(ser, inst, path, dut_name, test_id, start_ind=0, end_ind=1
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([primary_mux_state + " Index", test_name + " (ohm)"])
-        printProgressBar(0, 16, suffix = primary_mux_state + " 0/16", length = 16)
+        print_progress_bar(0, 16, suffix = primary_mux_state + " 0/16", length = 16)
         for ind in range(start_ind, end_ind):
-            serialWriteWithDelay(ser, b'Z')                     # set row switches to high-Z and disable muxes
-            serialWriteWithDelay(ser, CONT_DICT_ONE_DIM[test_name][0]) # set secondary mux to appropriate mode
-            serialWriteWithDelay(ser, CONT_DICT_ONE_DIM[test_name][1]) # set write mode to appropriate
-            serialWriteWithDelay(ser, bytes(hex(ind)[2:], 'utf-8'))    # write the row address to the tester
-            serialWriteWithDelay(ser, b'O')                     # set mode to continuity check mode
-            val = float(instQueryWithDelay(inst, 'meas:res?'))  # read resistance from the meter
+            serial_write_with_delay(ser, b'Z')                     # set row switches to high-Z and disable muxes
+            serial_write_with_delay(ser, CONT_DICT_ONE_DIM[test_name][0]) # set secondary mux to appropriate mode
+            serial_write_with_delay(ser, CONT_DICT_ONE_DIM[test_name][1]) # set write mode to appropriate
+            serial_write_with_delay(ser, bytes(hex(ind)[2:], 'utf-8'))    # write the row address to the tester
+            serial_write_with_delay(ser, b'O')                     # set mode to continuity check mode
+            val = float(inst_query_with_delay(inst, 'meas:res?'))  # read resistance from the meter
             writer.writerow([str(ind+1), val])                  # write value to CSV
             if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                 num_shorts += 1
                 summary_text += "X"
             else:
                 summary_text += "."
-            printProgressBar(ind+1, 16, suffix = primary_mux_state + " " + str(ind+1) + "/16", length = 16)
-    serialWriteWithDelay(ser, b'Z')                             # set all mux enables + mux channels to OFF
+            print_progress_bar(ind+1, 16, suffix = primary_mux_state + " " + str(ind+1) + "/16", length = 16)
+    serial_write_with_delay(ser, b'Z')                             # set all mux enables + mux channels to OFF
     num_shorts_text = test_name + " yielded " + str(num_shorts) + " short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -733,15 +776,15 @@ def test_cont_node(ser, inst, path, dut_name, test_id):
 
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         file.write(test_name.lower() + " (ohms)\n")
-        serialWriteWithDelay(ser, b'Z')                      # set rst switches to high-Z and disable muxes
-        serialWriteWithDelay(ser, CONT_DICT_NODE[test_id])   # set secondary mux to mode specified in input
-        serialWriteWithDelay(ser, b'O')                      # enable tester outputs
-        val = float(instQueryWithDelay(inst, 'meas:res?'))   # read resistance from the meter
+        serial_write_with_delay(ser, b'Z')                      # set rst switches to high-Z and disable muxes
+        serial_write_with_delay(ser, CONT_DICT_NODE[test_id])   # set secondary mux to mode specified in input
+        serial_write_with_delay(ser, b'O')                      # enable tester outputs
+        val = float(inst_query_with_delay(inst, 'meas:res?'))   # read resistance from the meter
         file.write(str(val))
         out_text += f"{val:,}"  + " ohms"
         time.sleep(DELAY_TIME_INST)
         file.close()
-    serialWriteWithDelay(ser, b'Z')                               # set rst switches to high-Z and disable muxes
+    serial_write_with_delay(ser, b'Z')                               # set rst switches to high-Z and disable muxes
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
         out_text += "\n" + test_name + " does not have shorts\n"
     else:
@@ -788,24 +831,24 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
     with open(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + ".csv", 'w', newline="") as file: 
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Col. Res. to PZBIAS w/ TFTs ON (ohm)"])
-        printProgressBar(0, 16, suffix = "Row 0/16", length = 16)
+        print_progress_bar(0, 16, suffix = "Row 0/16", length = 16)
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                serialWriteWithDelay(ser, b'Z')                 # set row switches to high-Z and disable muxes
-                serialWriteWithDelay(ser, b'W')                 # set secondary mux to col/PZBIAS mode
-                serialWriteWithDelay(ser, b'R')                 # set mode to row write mode
-                serialWriteWithDelay(ser, bytes(hex(row)[2:], 'utf-8'))         # write row index
-                serialWriteWithDelay(ser, b'L')                 # set mode to column write mode
-                serialWriteWithDelay(ser, bytes(hex(col)[2:], 'utf-8'))         # write column index
-                serialWriteWithDelay(ser, b'P')                 # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
-                tft_on_meas = float(instQueryWithDelay(inst, 'meas:res?'))      # read mux on measurement
+                serial_write_with_delay(ser, b'Z')                 # set row switches to high-Z and disable muxes
+                serial_write_with_delay(ser, b'W')                 # set secondary mux to col/PZBIAS mode
+                serial_write_with_delay(ser, b'R')                 # set mode to row write mode
+                serial_write_with_delay(ser, bytes(hex(row)[2:], 'utf-8'))         # write row index
+                serial_write_with_delay(ser, b'L')                 # set mode to column write mode
+                serial_write_with_delay(ser, bytes(hex(col)[2:], 'utf-8'))         # write column index
+                serial_write_with_delay(ser, b'P')                 # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
+                tft_on_meas = float(inst_query_with_delay(inst, 'meas:res?'))      # read mux on measurement
                 if (tft_on_meas < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
                     num_shorts += 1
                 out_array[(16-row)+1][col+1] = tft_on_meas
                 writer.writerow([str(row+1), str(col+1), tft_on_meas]) # appends to CSV with 1 index
                 time.sleep(DELAY_TIME_SERIAL)
-            printProgressBar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    serialWriteWithDelay(ser, b'Z')                             # set all mux enables + mux channels to OFF
+            print_progress_bar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
+    serial_write_with_delay(ser, b'Z')                             # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS with TFT's ON short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
@@ -836,16 +879,16 @@ Parameters:
 Returns: none
 '''
 def test_reset_sweep(ser, start_rst=0, end_rst=16):
-    printProgressBar(0, 16, suffix = "Reset 0/16", length = 16)
+    print_progress_bar(0, 16, suffix = "Reset 0/16", length = 16)
     for i in range(start_rst, end_rst):
-        serialWriteWithDelay(ser, b'Z')
-        serialWriteWithDelay(ser, b'T')
-        serialWriteWithDelay(ser, bytes(hex(i)[2:], 'utf-8'))
-        serialWriteWithDelay(ser, b'S')
+        serial_write_with_delay(ser, b'Z')
+        serial_write_with_delay(ser, b'T')
+        serial_write_with_delay(ser, bytes(hex(i)[2:], 'utf-8'))
+        serial_write_with_delay(ser, b'S')
         # do stuff here
-        printProgressBar(i+1, 16, suffix = "Reset " + str(i+1) + "/16", length = 16)
+        print_progress_bar(i+1, 16, suffix = "Reset " + str(i+1) + "/16", length = 16)
         time.sleep(DELAY_TIME_SERIAL)
-    serialWriteWithDelay(b'Z') # set all mux enables + mux channels to OFF
+    serial_write_with_delay(b'Z') # set all mux enables + mux channels to OFF
     return(0, "")
 
 '''
@@ -1308,66 +1351,28 @@ def main():
     array_stage_raw = len(dut_name_input.rstrip('_').split('_'))
     array_stage_text = ARRAY_ASSY_TYPES[array_stage_raw]
 
-    valid_responses = ["change", ""]
-    override = ""
-    while True:
-        try:
-            override = input("Array type is '" + array_stage_text + "'. Press 'enter' to continue with tests, " +
-                        "or type 'change' to override: ")
-        except ValueError:
-            print("Error: please enter a valid response")
-            continue
-        if (override not in valid_responses):
-            print("Error: please enter a valid response")
-            continue
-        else:
-            break
+    valid_responses = {"change":"change", "":"continue tests"}
+    print("Array type is '" + array_stage_text + "'.")
+    override = query_valid_response(valid_responses)
 
     if (override.lower() == 'change'):
-        query = "Please select from the following...\n"
-        for key in ARRAY_ASSY_TYPES.keys():
-            query += "- " + str(key) + " for " + ARRAY_ASSY_TYPES[key] + "\n"
-        query = query[:-1] + ": "
-        while True:
-            try:
-                array_stage_raw = int(input(query))
-            except ValueError:
-                print("Sorry, please enter a numerical value...")
-                continue
-            if (int(array_stage_raw) not in ARRAY_ASSY_TYPES.keys()):
-                print("Sorry, please enter a valid selection...")
-                continue
-            else:
-                break
-        array_stage_text = ARRAY_ASSY_TYPES[array_stage_raw]
+        array_stage_text = ARRAY_ASSY_TYPES[int(query_valid_response(ARRAY_ASSY_TYPES))]
     print("Running tests for '" + array_stage_text + "' array type...")
 
     path = PATH_BASE + array_stage_text.title() + "\\"
     if (os.path.exists(path + dut_name_input)):
         path += dut_name_input + "\\"
     else:
-        make_new_path = "Y"
-        valid_responses = ["Y", "N"]
-        print("")
-        while True:
-            try:
-                make_new_path = input("Are you sure you want to make a new directory " + path + dut_name_input + "?\n" +
-                                      "'Y' or 'N': ")
-            except ValueError:
-                print("Sorry, please enter 'Y' or 'N'")
-                continue
-            if (make_new_path.upper() not in valid_responses):
-                print("Sorry, please enter 'Y' or 'N'")
-                continue
-            else:
-                if (make_new_path.upper() == "N"):
-                    print("Exiting program now...")
-                    sys.exit(0)
-                else:
-                    print("Making new directory...")
-                    os.makedirs(path + "\\" + dut_name_input)
-                    path += dut_name_input + "\\"
-                break
+        valid_responses = ['Y', 'N']
+        print("\nAre you sure you want to make a new directory " + path + dut_name_input + "?")
+        make_new_path = query_valid_response(valid_responses)
+        if (make_new_path.upper() == 'N'):
+            print("Exiting program now...")
+            sys.exit(0)
+        else:
+            print("Making new directory...")
+            os.makedirs(path + "\\" + dut_name_input)
+            path += dut_name_input + "\\"
 
     dut_name_full = dut_name_input
     dut_module_stage_input = ""
@@ -1391,28 +1396,14 @@ def main():
     # Query TFT type from Google Sheets with option to override
     creds = get_creds()
     array_tft_type = get_array_transistor_type(creds, dut_name_input)
-    override = ""
+    override = "change"
+
     if (type(array_tft_type) is int):
-        override = input("Array TFT type is " + str(array_tft_type) + "T.\nPress 'enter' to continue with " +
-                     str(array_tft_type) + "T tests, or type 'change' to override: ")
-    else:
-        override = "change"
-    if (override.lower() == 'change'):
-        query = "Please select from the following...\n"
-        for key in ARRAY_TFT_TYPES:
-            query += "- " + str(key) + " for " + str(key) + "T\n"
-        query = query[:-1] + ": "
-        while True:
-            try:
-                array_tft_type = int(input(query))
-            except ValueError:
-                print("Sorry, please enter a numerical value...")
-                continue
-            if (array_tft_type not in ARRAY_TFT_TYPES):
-                print("Sorry, please enter a valid selection...")
-                continue
-            else:
-                break
+        print("Array TFT type is " + str(array_tft_type) + "T.")
+        valid_responses = {"": "continue with " + str(array_tft_type) + "T tests", "change": "override"}
+        override = query_valid_response(valid_responses)
+    if (override.lower() == "change"):
+        array_tft_type = int(query_valid_response(ARRAY_TFT_TYPES))
     print("Running tests for " + str(array_tft_type) + "T array...\n")
 
     out_string = ""
@@ -1452,9 +1443,9 @@ def main():
 
     if (array_tft_type == 1):
         special_test_state = 0
-        test_selection_raw = input("Please hit 'enter' for default (full) 1T test, or\n" +
-                                "type '1' to only run cap + TFT cont. tests and skip continuity checks, or\n" +
-                                "type '2' to only run continuity tests: ")
+        valid_responses = {'': "run full 1T test", 1: "only run cap + TFT cont. tests and skip continuity checks",
+                           2: "only run continuity tests"}
+        test_selection_raw = query_valid_response(valid_responses)
         if (test_selection_raw == "1"):
             special_test_state = 1
             print("Running only cap and TFT ON tests...\n")
@@ -1465,8 +1456,8 @@ def main():
             print("Running all tests...\n")
 
         if (special_test_state == 1): # only run capacitance and TFT ON tests
-            test_selection_raw = input("Please hit 'enter' for default cap test 1nF range, or type '1' to " +
-                                    "run capacitance test with 10nF range: ")
+            valid_responses = {'': "run cap test with default 1nF range", 1: "run cap test with 10nF range"}
+            test_selection_raw = query_valid_response(valid_responses)
             meas_range_input = '1e-9'
             if (test_selection_raw == "1"):
                 meas_range_input = '1e-8'
@@ -1489,7 +1480,7 @@ def main():
             cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
             cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
             cont_col_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
-            cont_shield_to_pzbias = test_cont_node(dut_name_full, "CONT_SHIELD_TO_PZBIAS")
+            cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
 
             out_string += cont_row_to_column[1] + "\n"
             out_string += cont_row_to_pzbias[1] + "\n"
@@ -1531,17 +1522,19 @@ def main():
             response = ""
             if hasShorts:
                 print("This array doesn't have pants... it has shorts!")
-                response = input("Type 'test' and 'enter' to continue with cap check, or hit 'enter' to skip cap check: ")
+                valid_responses = {"test": "continue with cap check", '': "skip cap check"}
+                response = query_valid_response(valid_responses)
             else:
-                temp = input("Please hit 'enter' to continue with cap tests, or type 'exit' to exit: ")
+                valid_responses = {"exit": "exit", '': "continue with cap tests"}
+                temp = query_valid_response(valid_responses)
                 if (len(temp) == 0):
                     response = "test"
                 else:
                     response = ""
-            if (response == "test"):
+            if (response.lower() == "test"):
                 print("Running cap and TFT continuity tests...")
-                test_selection_raw = input("\nPlease hit 'enter' for default cap test 1nF range, or type '1' to " +
-                                        "run capacitance test with 10nF range: ")
+                valid_responses = {'': "run cap test with default 1nF range", 1: "run cap test with 10nF range"}
+                test_selection_raw = query_valid_response(valid_responses)
                 meas_range_input = '1e-9'
                 if (test_selection_raw == "1"):
                     meas_range_input = '1e-8'
@@ -1646,22 +1639,9 @@ def main():
 
     compare_filename = ""
     file_cmp_index = -1
-    valid_responses = ["Y", "M", ""]
-    cmd = ""
-    while True:
-        try:
-            cmd = input("Comparing output summary files- Please enter:\n" +
-                "- 'Y' to compare data with previous test\n" +
-                "- 'M' to manually compare against a file for this array, or\n" +
-                "- 'enter' to exit... ").upper()
-        except ValueError:
-            print("Error: please enter a valid response")
-            continue
-        if (cmd not in valid_responses):
-            print("Error: please enter a valid response")
-            continue
-        else:
-            break
+    print("Comparing output summary files...")
+    valid_responses = {'Y': "compare data with previous test", 'M': "manually compare against a file for this array", '': "exit program"}
+    cmd = query_valid_response(valid_responses)
 
     if (cmd.upper().strip() == 'Y'):
         file_cmp_index = -2
