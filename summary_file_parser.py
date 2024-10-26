@@ -17,6 +17,7 @@ from googleapiclient.errors import HttpError
 from httplib2 import Http
 
 # TODO: improve sensor array/backplane classification system such that arrays/backplanes can have stage names
+# TODO: handle new header with 6 rows (array type, array stage, and tester S/N) in extract_header_from_chunk
 # NOTE: if running this script too often, Google Sheets queries may not be handled.
 
 # Google Sheets integration

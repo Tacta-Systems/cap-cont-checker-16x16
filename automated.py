@@ -74,6 +74,7 @@ USING_USB_PSU = True
 
 # TODO: load COM port, DMM serial number, and PSU serial number from config file, for scalability
 COM_PORT_DEFAULT = "COM5" # default hardcoded value, ok to change from setup to setup
+TESTER_SERIAL_NUMBER = COM_PORT_DEFAULT # this is a placeholder
 DMM_SERIAL_STRING  = "USB0::0x05E6::0x6500::04611761::INSTR"
 PSU_SERIAL_STRING  = "USB0::0x3121::0x0002::583H23104::INSTR"
 PSU_DELAY_TIME = 3 # seconds
@@ -97,6 +98,7 @@ ARRAY_ASSY_TYPES = {
 
 RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
 RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
+RES_OPEN_THRESHOLD_LOOPBACKS = 10e3      # any value above this is considered an open loopback
 
 # Define dictionary linking sensor types to their acceptable capacitance range
 # Sensor type (key) is a string (e.g. "T1")
@@ -109,7 +111,7 @@ CAP_THRESHOLD_VALS["backplane"] = (-2, 2) # bare backplane without sensors
 # Define max number of shorts are permitted acceptable for an array
 MAX_PASS_CONT_COUNT_TWO_DIM = 0
 MAX_PASS_CONT_COUNT_ONE_DIM = 0
-MIN_PASS_CAP_COUNT  = 255
+MIN_PASS_CAP_COUNT = 255
 
 # Define max number of out-of-range capacitance sensors are permitted acceptable for an array
 
@@ -1375,22 +1377,25 @@ def main():
             path += dut_name_input + "\\"
 
     dut_name_full = dut_name_input
-    dut_module_stage_input = ""
+    dut_stage_input = ""
     if (array_stage_raw == 3):
         dut_name_full += "_"
         while True:
             try:
-                dut_module_stage_input = input("\nPlease enter the array stage of assembly (e.g. onglass): ")
+                dut_stage_input = input("\nPlease enter the module stage of assembly (e.g. onglass): ")
             except ValueError:
                 print("Sorry, array stage of assembly can't be blank")
                 continue
-            if (len(dut_module_stage_input) < 1):
+            if (len(dut_stage_input) < 1):
                 print("Sorry, array stage of assembly can't be blank")
                 continue
             else:
                 break
-
-    dut_name_full += dut_module_stage_input
+    else:
+        dut_stage_input = input("\nPlease enter the stage of assembly, or leave blank: ")
+        if (len(dut_stage_input) > 0):
+            dut_name_full += "_"
+    dut_name_full += dut_stage_input
     print("Test data for " + dut_name_full + " will save to path " + path + "\n")
 
     # Query TFT type from Google Sheets with option to override
@@ -1418,27 +1423,37 @@ def main():
         output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res)
         output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res)
         print("")
-        with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
-            file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
-            file.write(str(loop_one_res) + "," + str(loop_two_res))
     else:
-        loop_one_res = test_cont_loopback_one(ser, inst)
+        loop_one_res_raw = test_cont_loopback_one(ser, inst)
         time.sleep(1)
-        loop_two_res = test_cont_loopback_two(ser, inst)
+        loop_two_res_raw = test_cont_loopback_two(ser, inst)
         print("")
-        out_string += str(loop_one_res[1]) + "\n"
-        out_string += str(loop_two_res[1]) + "\n\n"
-        output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res[0])
-        output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res[0])
-        with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_" + dut_module_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
-            file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
-            file.write(str(loop_one_res[0]) + "," + str(loop_two_res[0]))
+        loop_one_res = loop_one_res_raw[0]
+        loop_two_res = loop_two_res_raw[0]
+        out_string += str(loop_one_res_raw[1]) + "\n"
+        out_string += str(loop_two_res_raw[1]) + "\n\n"
+        output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res)
+        output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res)
+
+    if (loop_one_res > RES_OPEN_THRESHOLD_LOOPBACKS or loop_two_res > RES_OPEN_THRESHOLD_LOOPBACKS):
+        print("WARNING: One or more loopbacks is open. Continue with test?")
+        valid_responses = {'Y': "continue", '': "exit program"}
+        query = query_valid_response(valid_responses)
+        if (query == 'Y'):
+            print("Continuing with tests...\n")
+        else:
+            print("Exiting...")
+            sys.exit(0)
+
+    with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
+        file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
+        file.write(str(loop_one_res) + "," + str(loop_two_res))
 
     output_payload_gsheets_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d %H:%M:%S')
-    output_payload_gsheets_dict["Tester Serial Number"] = ser.port
+    output_payload_gsheets_dict["Tester Serial Number"] = TESTER_SERIAL_NUMBER
     output_payload_gsheets_dict["Array Serial Number"]  = dut_name_input
     output_payload_gsheets_dict["Array Type"]           = array_stage_text
-    output_payload_gsheets_dict["Array Module Stage"]   = dut_module_stage_input
+    output_payload_gsheets_dict["Array Module Stage"]   = dut_stage_input
     output_payload_gsheets_dict["TFT Type"]             = str(array_tft_type) + "T"
 
     if (array_tft_type == 1):
@@ -1465,7 +1480,7 @@ def main():
             else:
                 meas_range_input = '1e-9'
                 print("Running cap test with default 1nF range...\n")
-            test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_module_stage_input,
+            test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_stage_input,
                                     "CAP_COL_TO_PZBIAS", array_stage_text, meas_range_input)
             test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_full)
 
@@ -1542,7 +1557,7 @@ def main():
                 else:
                     meas_range_input = '1e-9'
                     print("Running cap test with default 1nF range...\n")
-                test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_module_stage_input,
+                test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_stage_input,
                                         "CAP_COL_TO_PZBIAS", array_stage_text, meas_range_input)
                 test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_full)
                 out_string += "\n" + test_cap_out[1]
@@ -1607,9 +1622,13 @@ def main():
 
     output_filename = datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_full + "_summary.txt"
     output_filename_full = path + output_filename
-    out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\nArray ID: " + dut_name_full + "\n" + 
-                "Array Type: " + str(array_tft_type) + "T\n" +
-                "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
+    out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\n" +
+                  "Array ID: " + dut_name_input + "\n" +
+                  "Array Stage: " + dut_stage_input + "\n" +
+                  "Array Type: " + array_stage_text + "\n" +
+                  "TFT Type: " + str(array_tft_type) + "T\n" +
+                  "Tester S/N: " + TESTER_SERIAL_NUMBER + "\n" +
+                  "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
 
     with open(output_filename_full, 'w', newline='') as file:
         file.write(out_string)
