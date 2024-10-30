@@ -1445,7 +1445,7 @@ def main():
             print("Exiting...")
             sys.exit(0)
 
-    with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
+    with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_" + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
         file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
         file.write(str(loop_one_res) + "," + str(loop_two_res))
 
