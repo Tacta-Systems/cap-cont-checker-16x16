@@ -1420,8 +1420,8 @@ def main():
         (loop_one_res, loop_two_res) = test_loopback_resistance(ser, inst)
         out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
         out_string += "Loopback 2 resistance: " + str(loop_two_res) + " ohms" + "\n\n"
-        output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res)
-        output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res)
+        output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
+        output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
         print("")
     else:
         loop_one_res_raw = test_cont_loopback_one(ser, inst)
@@ -1432,8 +1432,8 @@ def main():
         loop_two_res = loop_two_res_raw[0]
         out_string += str(loop_one_res_raw[1]) + "\n"
         out_string += str(loop_two_res_raw[1]) + "\n\n"
-        output_payload_gsheets_dict["Loopback One (ohm)"] = str(loop_one_res)
-        output_payload_gsheets_dict["Loopback Two (ohm)"] = str(loop_two_res)
+        output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
+        output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
 
     if (loop_one_res > RES_OPEN_THRESHOLD_LOOPBACKS or loop_two_res > RES_OPEN_THRESHOLD_LOOPBACKS):
         print("WARNING: One or more loopbacks is open. Continue with test?")
