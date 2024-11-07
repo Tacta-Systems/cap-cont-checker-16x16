@@ -76,6 +76,10 @@ def main():
         print("\nAre you sure you want to make a new directory " + path + dut_name_input + "?")
         make_new_path = query_valid_response(valid_responses)
         if (make_new_path.upper() == 'N'):
+            inst.close()
+            if (USING_USB_PSU):
+                set_psu_off(psu)
+                psu.close()
             print("Exiting program now...")
             sys.exit(0)
         else:
@@ -149,7 +153,11 @@ def main():
         if (query == 'Y'):
             print("Continuing with tests...\n")
         else:
-            print("Exiting...")
+            inst.close()
+            if (USING_USB_PSU):
+                set_psu_off(psu)
+                psu.close()
+            print("Exiting program now...")
             sys.exit(0)
 
     with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_" + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
