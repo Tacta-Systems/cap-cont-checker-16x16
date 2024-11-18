@@ -1164,29 +1164,29 @@ Returns:
     Python OAuth credentials object, or None if initialization error
 '''
 def get_creds(token_filename="token.json", cred_filename="credentials.json", scopes=SCOPES):
-  try:
-    creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists(token_filename):
-      creds = Credentials.from_authorized_user_file(token_filename, scopes)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-      if creds and creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-      else:
-        flow = InstalledAppFlow.from_client_secrets_file(
-            cred_filename, scopes
-        )
-        creds = flow.run_local_server(port=0)
-      # Save the credentials for the next run
-      with open(token_filename, "w") as token:
-        token.write(creds.to_json())
-    return creds
-  except HttpError as err:
-    print(err)
-    return None
+    try:
+        creds = None
+        # The file token.json stores the user's access and refresh tokens, and is
+        # created automatically when the authorization flow completes for the first
+        # time.
+        if os.path.exists(token_filename):
+            creds = Credentials.from_authorized_user_file(token_filename, scopes)
+        # If there are no (valid) credentials available, let the user log in.
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    cred_filename, scopes
+                )
+                creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open(token_filename, "w") as token:
+                token.write(creds.to_json())
+        return creds
+    except HttpError as err:
+        print(err)
+        return None
 
 '''
 Function that pulls the array TFT type from the sheet 'Sensing Inventory'/'Sensor Modules'/'Sensor Module SN'
@@ -1205,46 +1205,91 @@ Returns:
 '''
 def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='R',
                               spreadsheet_id=SPREADSHEET_ID, id_sheet_name=ID_SHEET_NAME):
-  try:
-    service = build("sheets", "v4", credentials=creds)
-    sheet = service.spreadsheets()
-    # Define the range (A1 notation) to append the data at the end of the sheet
-    range_name_dieid = f'{id_sheet_name}!' + dieid_cols + ':' + dieid_cols
-    range_name_tfttype = f'{id_sheet_name}!' + dieid_tfts + ':' + dieid_tfts
-    result_dieid = (
-      sheet.values()
-      .get(spreadsheetId=spreadsheet_id, range=range_name_dieid)
-      .execute()
-    )
-    result_tfttype = (
-      sheet.values()
-      .get(spreadsheetId=spreadsheet_id, range=range_name_tfttype)
-      .execute()
-    )
-    values_dieid = result_dieid.get("values", [])
-    values_tfttype = result_tfttype.get("values", [])
+    try:
+        service = build("sheets", "v4", credentials=creds)
+        sheet = service.spreadsheets()
+        # Define the range (A1 notation) to append the data at the end of the sheet
+        range_name_dieid = f'{id_sheet_name}!' + dieid_cols + ':' + dieid_cols
+        range_name_tfttype = f'{id_sheet_name}!' + dieid_tfts + ':' + dieid_tfts
+        result_dieid = (
+            sheet.values()
+            .get(spreadsheetId=spreadsheet_id, range=range_name_dieid)
+            .execute()
+        )
+        result_tfttype = (
+            sheet.values()
+            .get(spreadsheetId=spreadsheet_id, range=range_name_tfttype)
+            .execute()
+        )
+        values_dieid = result_dieid.get("values", [])
+        values_tfttype = result_tfttype.get("values", [])
 
-    found_array = False
-    i = 0
-    tft_type="INVALID"
-    for i in range(len(values_dieid)):
-      if (len(values_dieid[i]) > 0):
-        if (values_dieid[i][0].rstrip("_").upper().split('_')[0] == array_id.upper().split('_')[0]):
-          # print("Found at index " + str(i))
-          found_array = True
-          tft_type = values_tfttype[i][0]
-          break
-    if (found_array):
-      if (tft_type.split('-')[0] == 'FS'):
-        return int(tft_type.split('-')[1][0])
-      else:
-        return int(tft_type.split('-')[0][0])
-    else:
-      print("Array not found in inventory!")
-      return None
-  except HttpError as err:
-    print(err)
-    return None
+        found_array = False
+        i = 0
+        tft_type="INVALID"
+        for i in range(len(values_dieid)):
+            if (len(values_dieid[i]) > 0):
+                if (values_dieid[i][0].rstrip("_").upper().split('_')[0] == array_id.upper().split('_')[0]):
+                # print("Found at index " + str(i))
+                    found_array = True
+                    tft_type = values_tfttype[i][0]
+                    break
+        if (found_array):
+            if (tft_type.split('-')[0] == 'FS'):
+                return int(tft_type.split('-')[1][0])
+            else:
+                return int(tft_type.split('-')[0][0])
+        else:
+            print("Array not found in inventory!")
+            return None
+    except HttpError as err:
+        print(err)
+        return None
+
+'''
+Function that does a wildcard search in the inventory for a substring; in most cases this can be the
+flex serial number for a sensor module. It queries the spreadsheet DieID column ('A') and returns the
+full sensor name if a match is found; otherwise, NoneType object is returned.
+Parameters:
+    creds:      Initialized Google Apps credential, with token.json initialized. Refer to 'main()' in
+                'google_sheets_example.py' for initialization example
+    array_id:   The query, can be a backplane, assembly, or module id, in the format 'E2421-002-001-E5_T1_R1-103'
+    dieid_cols: The column in which to search for the query, by default column 'A'
+    dieid_tfts: The column with the corresponding TFT count, by default column 'Q'
+    spreadsheet_id: The Google Sheets spreadsheet ID, extracted from the URL (docs.google.com/spreadsheets/d/***)
+    id_sheet_name : The name of the sheet to search in for array_id, by default set by global variable
+Returns:
+    String with full sensor ID of the match, or NoneType object if not found/error
+'''
+def get_array_full_name(creds, search_string, dieid_cols='A', flexid_cols='AK',
+                        spreadsheet_id=SPREADSHEET_ID, id_sheet_name=ID_SHEET_NAME):
+    try:
+        service = build("sheets", "v4", credentials=creds)
+        sheet = service.spreadsheets()
+        # Define the range (A1 notation) to append the data at the end of the sheet
+        range_name_dieid = f'{id_sheet_name}!' + dieid_cols + ':' + dieid_cols
+        result_dieid = (
+            sheet.values()
+            .get(spreadsheetId=spreadsheet_id, range=range_name_dieid)
+            .execute()
+        )
+        values_dieid = result_dieid.get("values", [])
+        found_array = False
+        full_array_id = None
+        i = 0
+        for i in range(len(values_dieid)):
+            if (len(values_dieid[i]) > 0):
+                if (search_string.upper() in values_dieid[i][0].upper()):
+                    # print("Found at index " + str(i))
+                    found_array = True
+                    full_array_id = values_dieid[i][0].upper()
+                    break
+        if (not found_array):
+            print("Array not found in inventory!")
+        return full_array_id
+    except HttpError as err:
+        print(err)
+        return None
 
 '''
 Writes a row to a spreadsheet, in particular the results sheet of the 'Sensing Inventory' spreadsheet.
@@ -1263,29 +1308,29 @@ Returns:
 '''
 def write_to_spreadsheet(creds, payload, range_out_start_col='A', range_out_end_col='E',
                          spreadsheet_id=SPREADSHEET_ID, out_sheet_name=OUT_SHEET_NAME):
-  if (type(payload) is not list):
-    print("ERROR: payload is not a list...")
-    return False
-  try:
-    service = build("sheets", "v4", credentials=creds)
-     # Prepare the request body with the values to append
-    body_out = {
-        'values': [payload]
-    }
-    range_name_out = f'{out_sheet_name}!' + range_out_start_col + ':' + range_out_end_col
-    # Call the API to append the new row
-    sheet = service.spreadsheets()
-    result = sheet.values().append(
-        spreadsheetId=spreadsheet_id,
-        range=range_name_out,
-        valueInputOption='RAW',
-        insertDataOption='INSERT_ROWS',
-        body=body_out
-    ).execute()
-    return True
-  except HttpError as err:
-    print(err)
-    return False
+    if (type(payload) is not list):
+        print("ERROR: payload is not a list...")
+        return False
+    try:
+        service = build("sheets", "v4", credentials=creds)
+        # Prepare the request body with the values to append
+        body_out = {
+            'values': [payload]
+        }
+        range_name_out = f'{out_sheet_name}!' + range_out_start_col + ':' + range_out_end_col
+        # Call the API to append the new row
+        sheet = service.spreadsheets()
+        result = sheet.values().append(
+            spreadsheetId=spreadsheet_id,
+            range=range_name_out,
+            valueInputOption='RAW',
+            insertDataOption='INSERT_ROWS',
+            body=body_out
+        ).execute()
+        return True
+    except HttpError as err:
+        print(err)
+        return False
 
 '''
 Helper function to pass/fail continuity check function results
