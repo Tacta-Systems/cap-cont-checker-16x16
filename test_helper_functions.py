@@ -1248,8 +1248,9 @@ def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='R',
 
 '''
 Function that does a wildcard search in the inventory for a substring; in most cases this can be the
-flex serial number for a sensor module. It queries the spreadsheet DieID column ('A') and returns the
-full sensor name if a match is found; otherwise, NoneType object is returned.
+flex serial number for a sensor module. Only works for unique matches; multiple matches do not count.
+It queries the spreadsheet DieID column ('A') and returns the full sensor name if a unique match is found;
+otherwise, NoneType object is returned.
 Parameters:
     creds:      Initialized Google Apps credential, with token.json initialized. Refer to 'main()' in
                 'google_sheets_example.py' for initialization example
@@ -1274,18 +1275,20 @@ def get_array_full_name(creds, search_string, dieid_cols='A', flexid_cols='AK',
             .execute()
         )
         values_dieid = result_dieid.get("values", [])
-        found_array = False
         full_array_id = None
         i = 0
+        match_count = 0
         for i in range(len(values_dieid)):
             if (len(values_dieid[i]) > 0):
                 if (search_string.upper() in values_dieid[i][0].upper()):
                     # print("Found at index " + str(i))
-                    found_array = True
                     full_array_id = values_dieid[i][0].upper()
-                    break
-        if (not found_array):
+                    match_count += 1
+        if (match_count <= 0):
             print("Array not found in inventory!")
+        elif (match_count > 1):
+            print("Duplicate matches found!")
+            full_array_id = None
         return full_array_id
     except HttpError as err:
         print(err)
