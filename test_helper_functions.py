@@ -81,7 +81,8 @@ CAP_RANGE_DEFAULT = '1E-9'
 
 # Arrays can be 1T or 3T,
 # and they can be "backplanes", "sensor arrays", or "sensor modules".
-ARRAY_TFT_TYPES = [1, 3]
+ARRAY_TFT_TYPES = {1: "test 1T array",
+                   3: "test 3T array"}
 ARRAY_ASSY_TYPES = {
     1: "Backplanes",
     2: "Sensor Arrays",
@@ -488,6 +489,15 @@ def inst_query_with_delay(inst, queryString, delay=DELAY_TIME_INST):
     val = inst.query(queryString)
     time.sleep(delay)
     return val
+
+def shutdown_equipment(inst, psu, exit_program=False, using_psu=USING_USB_PSU):
+    inst.close()
+    if (using_psu):
+        set_psu_off(psu)
+        psu.close()
+    if (exit_program):
+        print("Exiting program now...")
+        sys.exit(0)
 
 # Test routines
 '''
@@ -1189,6 +1199,20 @@ def get_creds(token_filename="token.json", cred_filename="credentials.json", sco
         return None
 
 '''
+Helper function that checks if a passed-in value is an integer or something else
+Parameters:
+    value: The value to check
+Returns:
+    True if value is an integer, False otherwise
+'''
+def is_valid_int(value):
+    try:
+        int(value)
+        return True
+    except ValueError:
+        return False
+
+'''
 Function that pulls the array TFT type from the sheet 'Sensing Inventory'/'Sensor Modules'/'Sensor Module SN'
 It queries the spreadsheet in column 'A' (default) and auto-parses the input array_id regardless of type
 (backplane, array, module). It then looks in the corresponding column 'Q' (default) and pulls TFT type (1 or 3)
@@ -1236,9 +1260,13 @@ def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='R',
                     break
         if (found_array):
             if (tft_type.split('-')[0] == 'FS'):
-                return int(tft_type.split('-')[1][0])
+                val_raw = tft_type.split('-')[1][0]
+                if (is_valid_int(val_raw)):
+                    return int(val_raw)
             else:
-                return int(tft_type.split('-')[0][0])
+                val_raw = tft_type.split('-')[0][0]
+                if (is_valid_int(val_raw)):
+                    return int(val_raw)
         else:
             print("Array not found in inventory!")
             return None
