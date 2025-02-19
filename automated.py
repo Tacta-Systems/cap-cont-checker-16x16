@@ -114,7 +114,7 @@ def main():
                 shutdown_equipment(inst, psu, True)
     else:
         dut_name_input = dut_name_input_raw
-        print("Entered array ID: " + dut_name_input + "\n" +
+        print("\nEntered array ID: " + dut_name_input + "\n" +
             "EXIT THE PROGRAM or choose below to run a manual test\n")
         # manually input TFT type with option to exit program
         valid_responses = dict(ARRAY_TFT_TYPES)

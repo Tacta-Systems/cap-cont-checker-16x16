@@ -65,7 +65,7 @@ PATH_BASE = "G:\\Shared drives\\Sensing\\Testing\\"
 USING_USB_PSU = True
 
 # TODO: load COM port, DMM serial number, and PSU serial number from config file, for scalability
-COM_PORT_DEFAULT = "COM5" # default hardcoded value, ok to change from setup to setup
+COM_PORT_DEFAULT = "COM3" # default hardcoded value, ok to change from setup to setup
 TESTER_SERIAL_NUMBER = COM_PORT_DEFAULT # this is a placeholder
 DMM_SERIAL_STRING  = "USB0::0x05E6::0x6500::04611761::INSTR"
 PSU_SERIAL_STRING  = "USB0::0x3121::0x0002::583H23104::INSTR"
@@ -1314,9 +1314,10 @@ def get_array_full_name(creds, search_string, dieid_cols='A', flexid_cols='AK',
                     match_count += 1
         if (match_count <= 0):
             print("Array not found in inventory!")
+            return None
         elif (match_count > 1):
             print("Duplicate matches found!")
-            full_array_id = None
+            return None
         return full_array_id.rstrip("_")
     except HttpError as err:
         print(err)
