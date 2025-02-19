@@ -1317,7 +1317,7 @@ def get_array_full_name(creds, search_string, dieid_cols='A', flexid_cols='AK',
         elif (match_count > 1):
             print("Duplicate matches found!")
             full_array_id = None
-        return full_array_id
+        return full_array_id.rstrip("_")
     except HttpError as err:
         print(err)
         return None
