@@ -421,7 +421,7 @@ Returns:
 NOTE: remember to run 'psu.close()' when done with the PSU
 '''
 def set_psu_off(psu, psu_wait=PSU_DELAY_TIME):
-    print("\nTurning PSU off...")
+    print("Turning PSU off...")
     try:
         psu.write('OUTP:ALL 0')
         time.sleep(psu_wait)
@@ -497,6 +497,7 @@ def inst_query_with_delay(inst, queryString, delay=DELAY_TIME_INST):
     return val
 
 def shutdown_equipment(ser, inst, psu, exit_program=False, using_psu=USING_USB_PSU):
+    print("\nDisconnecting tester and DMM...")
     ser.close()
     inst.close()
     if (using_psu):

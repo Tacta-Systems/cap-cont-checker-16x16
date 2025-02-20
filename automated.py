@@ -30,11 +30,10 @@ def main():
         ser = init_helper(init_serial(COM_PORT_DEFAULT))
         rm = pyvisa.ResourceManager()
         inst = init_helper(init_multimeter(rm))
+        psu = None
         if (USING_USB_PSU):
             psu = init_helper(init_psu(rm))
             init_helper(set_psu_on(psu, PSU_DELAY_TIME))
-        else:
-            psu = None
 
         print("\nSetup Instructions:\n" +
             "- Plug sensor into connector on primary mux board\n" +
@@ -457,7 +456,7 @@ def main():
             print("Exiting program...")
             sys.exit(0)
     except KeyboardInterrupt:
-        print("\nExiting program...")
+        print("\nProgram interrupted. Exiting program...")
         shutdown_equipment(ser, inst, psu, True)
     except Exception as err:
         print("\nSoftware exception: " + err)
