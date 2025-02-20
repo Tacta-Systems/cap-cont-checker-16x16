@@ -67,7 +67,7 @@ USING_USB_PSU = True
 
 # TODO: load COM port, DMM serial number, and PSU serial number from config file, for scalability
 COM_PORT_DEFAULT = "COM3" # default hardcoded value, ok to change from setup to setup
-TESTER_SERIAL_NUMBER = COM_PORT_DEFAULT # this is a placeholder
+TESTER_SERIAL_NUMBER_DEFAULT = COM_PORT_DEFAULT # this is a placeholder
 DMM_SERIAL_STRING  = "USB0::0x05E6::0x6500::04611761::INSTR"
 PSU_SERIAL_STRING  = "USB0::0x3121::0x0002::583H23104::INSTR"
 PSU_DELAY_TIME = 3 # seconds

@@ -27,6 +27,7 @@ TESTER_CONFIG_LIST = [
      "tester_pcba_2_sn"        : "002",
     }
 ]
+# first element of this list is the default array connection type
 ARRAY_CONNECTION_LIST = [
     "ProbeCard_1400-00001_SN_002",
     "ProbeCard_1400-00001_SN_001",
