@@ -289,6 +289,7 @@ def init_helper(object, exit_if_unsuccessful=True):
             print("Exiting...")
             time.sleep(5)
             sys.exit(0)
+        return None
     return object
 
 '''
@@ -412,7 +413,7 @@ def set_psu_on(psu, psu_wait=PSU_DELAY_TIME):
         return None
 
 '''
-Turns off the BK power supply
+Turns off the BK power supply. Will not be successful if the PSU object has already been closed.
 Parameters:
     psu: A PyVISA object containing the initialized power supply
     psu_wait: The time to wait for the power supply to turn off
