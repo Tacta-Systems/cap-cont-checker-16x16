@@ -496,7 +496,8 @@ def inst_query_with_delay(inst, queryString, delay=DELAY_TIME_INST):
     time.sleep(delay)
     return val
 
-def shutdown_equipment(inst, psu, exit_program=False, using_psu=USING_USB_PSU):
+def shutdown_equipment(ser, inst, psu, exit_program=False, using_psu=USING_USB_PSU):
+    ser.close()
     inst.close()
     if (using_psu):
         set_psu_off(psu)

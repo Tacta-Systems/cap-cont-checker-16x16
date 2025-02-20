@@ -75,7 +75,7 @@ def main():
                 valid_responses[""] = "exit program"
                 override = query_valid_response(valid_responses)
                 if (override == ""):
-                    shutdown_equipment(inst, psu, True)
+                    shutdown_equipment(ser, inst, psu, True)
                 else:
                     array_tft_type = int(override)
             if (override.lower() == "change"):
@@ -112,7 +112,7 @@ def main():
                     path += dut_name_input + "\\"
                     os.makedirs(path)
                 else:
-                    shutdown_equipment(inst, psu, True)
+                    shutdown_equipment(ser, inst, psu, True)
         else:
             dut_name_input = dut_name_input_raw
             print("\nEntered array ID: " + dut_name_input + "\n" +
@@ -122,7 +122,7 @@ def main():
             valid_responses[""] = "exit program"
             override = query_valid_response(valid_responses)
             if (override == ""):
-                shutdown_equipment(inst, psu, True)
+                shutdown_equipment(ser, inst, psu, True)
             else:
                 array_tft_type = int(override)
                 print("Running tests for " + str(array_tft_type) + "T array...\n")
@@ -157,7 +157,7 @@ def main():
                     path += dut_name_input + "\\"
                     os.makedirs(path)
                 else:
-                    shutdown_equipment(inst, psu, True)
+                    shutdown_equipment(ser, inst, psu, True)
 
         # Prompt user for the device assembly stage -- mandatory if it's a sensor module,
         # not mandatory if it's a backplane or a sensor array
@@ -215,7 +215,7 @@ def main():
             if (query == 'Y'):
                 print("Continuing with tests...\n")
             else:
-                shutdown_equipment(inst, psu, True)
+                shutdown_equipment(ser, inst, psu, True)
 
         with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_" + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
