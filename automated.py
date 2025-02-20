@@ -33,6 +33,8 @@ def main():
         if (USING_USB_PSU):
             psu = init_helper(init_psu(rm))
             init_helper(set_psu_on(psu, PSU_DELAY_TIME))
+        else:
+            psu = None
 
         print("\nSetup Instructions:\n" +
             "- Plug sensor into connector on primary mux board\n" +
@@ -412,7 +414,7 @@ def main():
         else:
             print("ERROR: Could not write data to Google Sheets")
 
-        shutdown_equipment(inst, psu, False)
+        shutdown_equipment(ser, inst, psu, False)
 
         # --- begin file compare section ---
 
@@ -455,13 +457,11 @@ def main():
             print("Exiting program...")
             sys.exit(0)
     except KeyboardInterrupt:
-        print("Exiting program...")
-        shutdown_equipment(inst, psu, False)
-        sys.exit(0)
+        print("\nExiting program...")
+        shutdown_equipment(ser, inst, psu, True)
     except Exception as err:
-        print("Software exception: " + err)
-        shutdown_equipment(inst, psu, False)
-        sys.exit(0)
+        print("\nSoftware exception: " + err)
+        shutdown_equipment(ser, inst, psu, True)
 
 if (__name__ == "__main__"):
     sys.exit(main())
