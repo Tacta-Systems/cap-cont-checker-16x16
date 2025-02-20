@@ -108,7 +108,7 @@ def main():
                     print("Could not connect with selected tester config\n")
 
         print("Using tester config: " + config_name)
-
+        init_helper(set_psu_on(psu, PSU_DELAY_TIME))
         # Query user for array connection type, e.g. probe card, ZIF, or something else
         array_connection_default = ARRAY_CONNECTION_LIST[0]
         valid_responses = {}

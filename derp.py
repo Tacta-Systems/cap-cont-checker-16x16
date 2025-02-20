@@ -5,11 +5,11 @@ from test_helper_functions import *
 config_default = TESTER_CONFIG_LIST[0]
 config_name = config_default["tester_name"]
 rm = pyvisa.ResourceManager()
-ser = init_helper(init_serial(default_config["serial_port"]), False)
-inst = init_helper(init_multimeter(rm, default_config["dmm_serial_string"]), False)
+ser = init_helper(init_serial(config_default["serial_port"]), False)
+inst = init_helper(init_multimeter(rm, config_default["dmm_serial_string"]), False)
 psu = None
 if (USING_USB_PSU):
-    psu = init_helper(init_psu(rm, default_config["psu_serial_string"]))
+    psu = init_helper(init_psu(rm, config_default["psu_serial_string"]))
 
 # If default configuration successfully connects,
 # - selecting 'enter' (default) will use that configuration
@@ -80,6 +80,7 @@ if ((not success_config) or use_custom_config):
             print("Could not connect with selected tester config\n")
 
 print("Using tester config: " + config_name)
+init_helper(set_psu_on(psu, PSU_DELAY_TIME))
 
 # Query user for array connection type, e.g. probe card, ZIF, or something else
 array_connection_default = ARRAY_CONNECTION_LIST[0]
