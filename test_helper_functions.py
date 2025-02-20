@@ -53,6 +53,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from httplib2 import Http
+from tester_hw_configs import *
 
 # silence the PyGame import startup message
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
