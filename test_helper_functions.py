@@ -276,14 +276,19 @@ Helper function that checks if a newly initialized hardware object (e.g. serial,
 If object is null, exit program. If not, return the object.
 Parameter:
     object: A function call (e.g. init_serial())
+    exit_if_unsuccessful:
+        True (default) if program should quit if improper initialization
+        False if program should continue running
 Return:
     the created object, or exits program if function returns null
 '''
-def init_helper(object):
+def init_helper(object, exit_if_unsuccessful=True):
     if (object == None):
-        print("ERROR: COULD NOT INITIALIZE OBJECT! Exiting...")
-        time.sleep(5)
-        sys.exit(0)
+        print("ERROR: COULD NOT INITIALIZE OBJECT!")
+        if (exit_if_unsuccessful):
+            print("Exiting...")
+            time.sleep(5)
+            sys.exit(0)
     return object
 
 '''
