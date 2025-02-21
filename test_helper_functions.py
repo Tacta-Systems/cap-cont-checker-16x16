@@ -45,7 +45,7 @@ import sys
 import time
 import datetime as dt
 import numpy as np
-from collections import defaultdict
+
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -58,112 +58,6 @@ from tester_hw_configs import *
 # silence the PyGame import startup message
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
-
-# Root path where test results are saved.
-# Inside has the following folders: "Sensor Modules", "Sensor Arrays", and "Backplanes"
-PATH_BASE = "G:\\Shared drives\\Sensing\\Testing\\"
-
-USING_USB_PSU = True
-
-# TODO: load COM port, DMM serial number, and PSU serial number from config file, for scalability
-COM_PORT_DEFAULT = "COM3" # default hardcoded value, ok to change from setup to setup
-TESTER_SERIAL_NUMBER_DEFAULT = COM_PORT_DEFAULT # this is a placeholder
-DMM_SERIAL_STRING  = "USB0::0x05E6::0x6500::04611761::INSTR"
-PSU_SERIAL_STRING  = "USB0::0x3121::0x0002::583H23104::INSTR"
-PSU_DELAY_TIME = 3 # seconds
-
-DELAY_TIME_SERIAL = 0.02 # 0.05
-DELAY_TIME_INST = 0 # 0.1
-
-# default multimeter ranges
-RES_RANGE_DEFAULT = '100E6'
-RES_RANGE_LOOPBACKS = '10E3'
-CAP_RANGE_DEFAULT = '1E-9'
-
-# Arrays can be 1T or 3T,
-# and they can be "backplanes", "sensor arrays", or "sensor modules".
-ARRAY_TFT_TYPES = {1: "test 1T array",
-                   3: "test 3T array"}
-ARRAY_ASSY_TYPES = {
-    1: "Backplanes",
-    2: "Sensor Arrays",
-    3: "Sensor Modules"
-}
-
-RES_SHORT_THRESHOLD_ROWCOL = 100e6        # any value below this is considered a short
-RES_SHORT_THRESHOLD_RC_TO_PZBIAS = 100e6  # any value below this is considered a short
-RES_OPEN_THRESHOLD_LOOPBACKS = 10e3      # any value above this is considered an open loopback
-
-# Define dictionary linking sensor types to their acceptable capacitance range
-# Sensor type (key) is a string (e.g. "T1")
-# Acceptable capacitance range (value) is a tuple of (low, high) in pF
-CAP_THRESHOLD_MIN_DEFAULT = 5 # pF
-CAP_THRESHOLD_MAX_DEFAULT = 50
-CAP_THRESHOLD_VALS = defaultdict(lambda: (CAP_THRESHOLD_MIN_DEFAULT, CAP_THRESHOLD_MAX_DEFAULT))
-CAP_THRESHOLD_VALS["backplane"] = (-2, 2) # bare backplane without sensors
-
-# Define max number of shorts are permitted acceptable for an array
-MAX_PASS_CONT_COUNT_TWO_DIM = 0
-MAX_PASS_CONT_COUNT_ONE_DIM = 0
-MIN_PASS_CAP_COUNT = 255
-
-# Define max number of out-of-range capacitance sensors are permitted acceptable for an array
-
-# Google Sheets integration
-# If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SPREADSHEET_ID = "1EUixsb3LHau9IkTxp01H6DhMEBFxH59obI4z_YGYBko"
-ID_SHEET_NAME = "Sensor Modules"
-OUT_SHEET_NAME = "Tester Output"
-
-'''
-Dictionary with 1-character commands to set secondary mux board into the correct mode for the measurement
-'''
-CAP_FN_DICT = {
-    "CAP_COL_TO_PZBIAS": b'W',
-    "CAP_COL_TO_SHIELD": b'Y'
-}
-
-'''
-For two dimensional continuity checks (e.g. row to column, rst to column),
-dictionary with 1-character commands to set board into appropriate state, using tuples
-First element of tuple sets the secondary mux into the appropriate state
-Second element of tuple sets the primary mux into the first dimension (e.g. row) writing mode
-Third element of tuple sets the primary mux into the second dimension (e.g. col) writing mode
-'''
-CONT_DICT_TWO_DIM = {
-    "CONT_ROW_TO_COL": (b'U', b'R', b'L'),
-    "CONT_RST_TO_COL": (b'Q', b'T', b'L')
-}
-
-'''
-For one dimensional continuity checks (e.g. row to shield, col to PZBIAS, etc.),
-dictionary with 1-character commands to set board into appropriate state, using tuples
-First element of tuple is command for secondary mux,
-second element of tuple is command for row/col/reset write mode
-'''
-CONT_DICT_ONE_DIM = {
-    "CONT_ROW_TO_PZBIAS": (b'V', b'R'),
-    "CONT_ROW_TO_SHIELD": (b'X', b'R'),
-    "CONT_COL_TO_PZBIAS": (b'W', b'L'),
-    "CONT_COL_TO_SHIELD": (b'Y', b'L'),
-    "CONT_COL_TO_VDD"   : (b'!', b'L'),
-    "CONT_COL_TO_VRST"  : (b'$', b'L'),
-    "CONT_RST_TO_PZBIAS": (b'M', b'T'),
-    "CONT_RST_TO_SHIELD": (b'N', b'T')
-}
-
-'''
-For node continuity checks (e.g. vdd to shield),
-dictionary with 1-character commands to set secondary mux board into appropriate state
-'''
-CONT_DICT_NODE = {
-    "CONT_VDD_TO_SHIELD":    b'@',
-    "CONT_VRST_TO_SHIELD":   b'%',
-    "CONT_VDD_TO_PZBIAS":    b'#',
-    "CONT_VRST_TO_PZBIAS":   b'^',
-    "CONT_SHIELD_TO_PZBIAS": b'('
-}
 
 '''
 Dictionary used to store results from tests
@@ -197,7 +91,6 @@ output_payload_gsheets_dict = {
     "Vrst to SHIELD (ohm)"     : "",
     "Vrst to PZBIAS (ohm)"     : ""
 }
-
 
 # Helper functions for overall program
 '''
@@ -303,14 +196,14 @@ def init_serial(com_port=""):
     ser = serial.Serial()
     ser.port = com_port
     ser.baudrate = 115200
-    ser.bytesize = serial.EIGHTBITS #number of bits per bytes
-    ser.parity = serial.PARITY_NONE #set parity check: no parity
+    ser.bytesize = serial.EIGHTBITS    #number of bits per bytes
+    ser.parity = serial.PARITY_NONE    #set parity check: no parity
     ser.stopbits = serial.STOPBITS_ONE #number of stop bits
-    ser.timeout = 1            #non-block read
-    ser.xonxoff = False     #disable software flow control
-    ser.rtscts = False     #disable hardware (RTS/CTS) flow control
-    ser.dsrdtr = False       #disable hardware (DSR/DTR) flow control
-    ser.writeTimeout = 2     #timeout for write
+    ser.timeout = 1                    #non-block read
+    ser.xonxoff = False                #disable software flow control
+    ser.rtscts = False                 #disable hardware (RTS/CTS) flow control
+    ser.dsrdtr = False                 #disable hardware (DSR/DTR) flow control
+    ser.writeTimeout = 2               #timeout for write
     if (com_port == ""):
         print("\nListing available serial ports below:")
         ports = serial.tools.list_ports.comports()
@@ -336,7 +229,7 @@ def init_serial(com_port=""):
 '''
 Initializes the Keithley DMM6500 multimeter
 Parameters: 
-    rm: A PyVISA resource manager object (rm),
+    rm: A PyVISA resource manager object (rm)
     dmm_id: String serial name, default: USB0::0x05E6::0x6500::04611761::INSTR
     res_range: Default resistance range '100e6'
     cap_range: Default capacitance range '10e-3
@@ -345,7 +238,7 @@ Returns:
 TODO: implement equipment type check that quits if this address is not actually the right equipment
 NOTE: remember to run 'dmm.close()' when done with the DMM
 '''
-def init_multimeter(rm, dmm_id=DMM_SERIAL_STRING, res_range=RES_RANGE_DEFAULT, cap_range=CAP_RANGE_DEFAULT):
+def init_multimeter(rm, dmm_id=DMM_SERIAL_STRING_DEFAULT, res_range=RES_RANGE_DEFAULT, cap_range=CAP_RANGE_DEFAULT):
     try:
         dmm = rm.open_resource(dmm_id)
         print("Connected to VISA multimeter!")
@@ -367,25 +260,25 @@ def init_multimeter(rm, dmm_id=DMM_SERIAL_STRING, res_range=RES_RANGE_DEFAULT, c
 '''
 Initializes the BK power supply
 Parameters: 
-    rm: A PyVISA resource manager object (rm),
+    rm: A PyVISA resource manager object (rm)
     psu_id: String serial name, default: USB0::0x05E6::0x6500::04611761::INSTR
 Returns:
     An initialized PyVISA object, or a null object if not initialized
 TODO: implement equipment type check that quits if this address is not actually the right equipment
 NOTE: remember to run 'psu.close()' when done with the PSU
 '''
-def init_psu(rm, psu_id=PSU_SERIAL_STRING):
+def init_psu(rm, psu_id=PSU_SERIAL_STRING_DEFAULT):
     try:
         psu = rm.open_resource(psu_id)
         print("Connected to VISA PSU!")
+        # Have pyvisa handle line termination
+        psu.read_termination = '\n'
+        # Clear buffer and status
+        psu.write('*CLS')
+        return psu
     except Exception as e:
         print("ERROR: couldn't connect to VISA power supply...")
         return None
-    # Have pyvisa handle line termination
-    psu.read_termination = '\n'
-    # Clear buffer and status
-    psu.write('*CLS')
-    return psu
 
 '''
 Turns on the BK power supply
@@ -433,32 +326,126 @@ def set_psu_off(psu, psu_wait=PSU_DELAY_TIME):
         return None
 
 '''
-States:
-the reason we're using these names is because we're limited to one character + can't use the letters 'A' - 'F'.
-- 'O' for continuity check mode
-- 'P' for capacitance check mode
-- 'S' for reset sweep mode
-- 'Z' for all off
-- 'I' for binary counter disable mode
-- 'R' for writing to the row muxes
-- 'L' for writing to the column muxes
-- 'T' for writing to the reset muxes
-- 'U' for writing secondary board to "row/col" output
-- 'V' for writing secondary board to "row/PZBIAS" output
-- 'W' for writing secondary board to "col/PZBIAS" output
-- 'X' for writing secondary board to "row/SHIELD" output
-- 'Y' for writing secondary board to "col/SHIELD" output
-- 'M' for writing secondary board to "rst/PZBIAS" output
-- 'N' for writing secondary board to "rst/SHIELD" output
-- 'Q' for writing secondary board to "rst/col" output
-- '!' for writing secondary board to "vdd/col" output
-- '@' for writing secondary board to "vdd/SHIELD" output
-- '#' for writing secondary board to "vdd/PZBIAS" output
-- '$' for writing secondary board to "vrst/col" output
-- '%' for writing secondary board to "vrst/SHIELD" output
-- '^' for writing secondary board to "vrst/PZBIAS" output
-- '(' for writing secondary board to "SHIELD/PZBIAS" output
+Initializes and returns tuple with hardware and tester serial number
+Tries to setup hardware using dictionary of known tester hardware setups, or manual input,
+until hardware is properly initialized
+Returns hardware-- Arduino (serial), DMM (VISA), and PSU (VISA) objects-- and a tester hardware # (string)
+Parameters:
+    rm:                         A PyVISA resource manager object (rm)
+    tester_hw_config_list_in:   A list of dictionaries with tester hardware config options,
+                                by default TESTER_HW_CONFIG_LIST in tester_hw_configs.py
+                                Parameters: "tester_name", "serial_port",
+                                "dmm_serial_string", "psu_serial_string"
+    array_connection_list_in:   A list of interfaces to the array (strings), i.e. probe card,
+                                ZIF connector, or other interface,
+                                by default ARRAY_CONNECTION_LIST
+    using_usb_psu_in:           True if USB PSU should be set up, False if PSU shouldn't be setup
+Returns: A tuple with the following:
+    ser: Initialized PySerial object representing the tester's Arduino
+    dmm: Initialized PyVISA object representing the multimeter
+    psu: Initialized PyVISA object representing the power supply, or None if using_usb_psu_in is false
+    tester_serial_string: Serial number string, (hardware config name) + "__" + (array connection type)
 '''
+def init_equipment_with_config(rm, tester_hw_config_list_in=TESTER_HW_CONFIG_LIST,
+                               array_connection_list_in=ARRAY_CONNECTION_LIST,
+                               using_usb_psu_in=USING_USB_PSU):
+    # Attempt to connect using default configuration -- first element of tester_hw_config_list_in
+    # in tester_hw_configs.py
+    config_default = tester_hw_config_list_in[0]
+    config_name = config_default["tester_name"]
+    rm = pyvisa.ResourceManager()
+    ser = init_helper(init_serial(config_default["serial_port"]), False)
+    inst = init_helper(init_multimeter(rm, config_default["dmm_serial_string"]), False)
+    psu = None
+    if (using_usb_psu_in):
+        psu = init_helper(init_psu(rm, config_default["psu_serial_string"]))
+
+    # If default configuration successfully connects,
+    # - selecting 'enter' (default) will use that configuration
+    # - selecting 'N' will allow selecting of another configuration
+    #   or manually specifying the hardware
+    use_custom_config = False
+    success_config = (ser is not None) and (inst is not None) and (not (using_usb_psu_in and psu is None))
+    if (success_config):
+        valid_responses = {"": "continue with default tester config", "N": "specify custom tester config"}
+        override = query_valid_response(valid_responses)
+        if (override.lower() == "n"):
+            shutdown_equipment(ser, inst, psu, False)
+            ser = None
+            inst = None
+            psu = None
+            use_custom_config = True
+
+    # If default config fails to connect OR user specifies manual config
+    if ((not success_config) or use_custom_config):
+        print("")
+        if (success_config):
+            success_config = False
+        if ser is None:
+            print("Unable to connect to default port")
+        valid_responses = {}
+        # Loop until serial port, DMM, and PSU if applicable, are all successfully connected
+        # Ask user to either use a predefined hardware setup or specify a manual config
+        while (not success_config):
+            for i in range(len(tester_hw_config_list_in)):
+                valid_responses[str(i)] = tester_hw_config_list_in[i]["tester_name"]
+            valid_responses["M"] = "Set manual config"
+            print("Select the tester config from below.")
+            config_id = query_valid_response(valid_responses)
+            # If the user specifies manual config, input the serial port and DMM/PSU ID
+            # and try to connect
+            if (config_id.lower() == "m"):
+                config_name = "Manual"
+                serial_port_in = input("Enter serial port (e.g. COMx): ")
+                print("Sample VISA serial number: USB0::0x0000::0x0000::00000000::INSTR")
+                dmm_serial_in = input("Enter DMM VISA serial number: ")
+                ser = init_helper(init_serial(serial_port_in), False)
+                inst = init_helper(init_multimeter(rm, dmm_serial_in), False)
+                if (using_usb_psu_in):
+                    psu_serial_in = input("Enter PSU VISA serial number: ")
+                    psu = init_helper(init_psu(rm, psu_serial_in), False)
+            # Else, try to connect to the selected config
+            else:
+                config_id_index = int(config_id)
+                config_name = tester_hw_config_list_in[config_id_index]["tester_name"]
+                print("Using selected tester config: " + config_name)
+                ser = init_helper(init_serial(tester_hw_config_list_in[config_id_index]["serial_port"]), False)
+                inst = init_helper(init_multimeter(rm, tester_hw_config_list_in[config_id_index]["dmm_serial_string"]), False)
+                psu = None
+                if (using_usb_psu_in):
+                    psu = init_helper(init_psu(rm, tester_hw_config_list_in[config_id_index]["psu_serial_string"]), False)
+            success_config = (ser is not None) and (inst is not None) and (not (using_usb_psu_in and psu is None))
+            if (not success_config):
+                if (ser is not None):
+                    ser.close()
+                    ser = None
+                if (inst is not None):
+                    inst.close()
+                    inst = None
+                if (psu is not None):
+                    set_psu_off(psu)
+                    psu.close()
+                    psu = None
+                print("Could not connect with selected tester config\n")
+
+    print("Using tester config: " + config_name)
+    init_helper(set_psu_on(psu, PSU_DELAY_TIME))
+    # Query user for array connection type, e.g. probe card, ZIF, or something else
+    array_connection_default = array_connection_list_in[0]
+    valid_responses = {}
+    valid_responses[""] = array_connection_default + " (default)"
+    for i in range(1, len(array_connection_list_in)):
+        valid_responses[i] = array_connection_list_in[i]
+    print("\nSelect array connection type")
+    result_index = query_valid_response(valid_responses)
+    result_index = 0 if result_index == "" else int(result_index)
+    array_connection = array_connection_list_in[result_index]
+    print("Selected " + array_connection)
+
+    tester_serial_string = config_name + "__" + array_connection
+    print("Tester Serial Number: " + tester_serial_string)
+    return (ser, inst, psu, tester_serial_string)
+
 
 '''
 Writes (or tries) specified data to the serial port.
@@ -468,7 +455,7 @@ Parameters:
     delay: Amount of time to wait after writing serial command
 Returns: None
 '''
-def serial_write_with_delay(ser, byte, delay=DELAY_TIME_SERIAL):
+def serial_write_with_delay(ser, byte, delay=SERIAL_DELAY_TIME):
     ser.write(byte)
     time.sleep(delay)
 
@@ -480,7 +467,7 @@ Parameters:
     delay: Amount of time to wait after writing VISA command
 Returns: None
 '''
-def inst_write_with_delay(inst, writeString, delay=DELAY_TIME_INST):
+def inst_write_with_delay(inst, writeString, delay=DMM_DELAY_TIME):
     inst.write(writeString)
     time.sleep(delay)
 
@@ -492,11 +479,21 @@ Parameters:
     delay: Amount of time to wait after writing VISA command
 Returns: None
 '''
-def inst_query_with_delay(inst, queryString, delay=DELAY_TIME_INST):
+def inst_query_with_delay(inst, queryString, delay=DMM_DELAY_TIME):
     val = inst.query(queryString)
     time.sleep(delay)
     return val
 
+'''
+Shuts down, safely disconnects from equipment, and exits the program if specified
+Parameters:
+    ser:  Serial object that has been initialized (i.e. the Arduino)
+    inst: DMM PyVISA object that has been initialized
+    psu:  PSU PyVisa object that has been initialized
+    exit_program: True to quit program, False (default) to continue running
+    using_psu: True (default) to also shut down/disconnect PSU, False to skip PSU stuff
+Returns: None
+'''
 def shutdown_equipment(ser, inst, psu, exit_program=False, using_psu=USING_USB_PSU):
     print("\nDisconnecting tester and DMM...")
     ser.close()
@@ -656,7 +653,7 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
     num_shorts = 0
     out_text = ""
     inst.query('meas:res?')
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     out_text += "Sensor " + dim1_name + " to " + dim2_name + " Continuity Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -665,7 +662,7 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
         writer = csv.writer(file)
         writer.writerow([dim1_name + " Index", dim2_name + " Index", dim1_name + " Res. to " + dim2_name + " (ohm)"])
         print_progress_bar(0, 16, suffix = dim1_name + " 0/16", length = 16)
-        time.sleep(DELAY_TIME_SERIAL)
+        time.sleep(SERIAL_DELAY_TIME)
         for dim1_cnt in range(start_dim1, end_dim1):
             for dim2_cnt in range(start_dim2, end_dim2):
                 serial_write_with_delay(ser, b'Z')                              # set row switches to high-Z and disable muxes
@@ -731,7 +728,7 @@ def test_cont_one_dim(ser, inst, path, dut_name, test_id, start_ind=0, end_ind=1
     out_text = ""
 
     inst.query('meas:res?')                              # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     out_text += "Sensor " + test_name + " Detection Running..."
     print(out_text)
     out_text += "\n"
@@ -795,7 +792,7 @@ def test_cont_node(ser, inst, path, dut_name, test_id):
         val = float(inst_query_with_delay(inst, 'meas:res?'))   # read resistance from the meter
         file.write(str(val))
         out_text += f"{val:,}"  + " ohms"
-        time.sleep(DELAY_TIME_INST)
+        time.sleep(DMM_DELAY_TIME)
         file.close()
     serial_write_with_delay(ser, b'Z')                               # set rst switches to high-Z and disable muxes
     if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
@@ -828,7 +825,7 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
     out_text = ""
 
     inst.query('meas:res?')                                  # set Keithley mode to resistance measurement
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     out_array = np.zeros((18, 17), dtype='U64')             # create string-typed numpy array
     out_array[1] = ["C" + str(i) for i in range(0, 17)]     # set cols of output array to be "C1"..."C16"
     for i in range(len(out_array)):
@@ -859,7 +856,7 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
                     num_shorts += 1
                 out_array[(16-row)+1][col+1] = tft_on_meas
                 writer.writerow([str(row+1), str(col+1), tft_on_meas]) # appends to CSV with 1 index
-                time.sleep(DELAY_TIME_SERIAL)
+                time.sleep(SERIAL_DELAY_TIME)
             print_progress_bar(row + 1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
     serial_write_with_delay(ser, b'Z')                             # set all mux enables + mux channels to OFF
     num_shorts_text = "There were " + str(num_shorts) + " col/PZBIAS with TFT's ON short(s)"
@@ -900,7 +897,7 @@ def test_reset_sweep(ser, start_rst=0, end_rst=16):
         serial_write_with_delay(ser, b'S')
         # do stuff here
         print_progress_bar(i+1, 16, suffix = "Reset " + str(i+1) + "/16", length = 16)
-        time.sleep(DELAY_TIME_SERIAL)
+        time.sleep(SERIAL_DELAY_TIME)
     serial_write_with_delay(b'Z') # set all mux enables + mux channels to OFF
     return(0, "")
 
@@ -923,8 +920,9 @@ Returns:
         Loopback A resistance
         Loopback B resistance
 '''
-def test_loopback_resistance(ser, inst, num_counts=10, loop1_name="loop1.wav", loop2_name="loop2.wav",
-                             both_loops_name="both_loops.wav", silent=False):
+def test_loopback_resistance(ser, inst, num_counts=10, loop1_name=LOOP1_SOUND_FILE_DEFAULT,
+                             loop2_name=LOOP2_SOUND_FILE_DEFAULT,
+                             both_loops_name=BOTH_LOOPS_SOUND_FILE_DEFAULT, silent=SILENT_MODE_DEFAULT):
     mixer.init()
     loop1 = mixer.Sound(loop1_name)
     loop2 = mixer.Sound(loop2_name)
@@ -935,15 +933,15 @@ def test_loopback_resistance(ser, inst, num_counts=10, loop1_name="loop1.wav", l
     print("")
     while not is_pressed:
         ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
-        time.sleep(DELAY_TIME_SERIAL)
+        time.sleep(SERIAL_DELAY_TIME)
         val1 = float(inst.query('meas:res?'))
         val1_str = "{:.4e}".format(val1)
-        time.sleep(DELAY_TIME_INST)
+        time.sleep(DMM_DELAY_TIME)
         ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
-        time.sleep(DELAY_TIME_SERIAL)
+        time.sleep(SERIAL_DELAY_TIME)
         val2 = float(inst.query('meas:res?'))
         val2_str = "{:.4e}".format(val2)
-        time.sleep(DELAY_TIME_INST)
+        time.sleep(DMM_DELAY_TIME)
         print("LOOP1 OHM " + val1_str + " LOOP2 OHM " + val2_str, end='\r')
         if (val1 < RES_SHORT_THRESHOLD_ROWCOL and val2 < RES_SHORT_THRESHOLD_ROWCOL):
             if not silent:
@@ -979,18 +977,18 @@ def test_cont_loopback_one(ser, inst):
     val = 0
     out_text = "Loopback 1 resistance: "
     inst.write('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
-    time.sleep(DELAY_TIME_INST)
+    time.sleep(DMM_DELAY_TIME)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     ser.write(b'&')                                  # set secondary mux to Loopback 1 mode
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     val = float(inst.query('meas:res?'))             # read resistance from the meter
     out_text += f"{val:,}" + " ohms"
-    time.sleep(DELAY_TIME_INST)
+    time.sleep(DMM_DELAY_TIME)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     inst.write('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
-    time.sleep(DELAY_TIME_INST)
+    time.sleep(DMM_DELAY_TIME)
     print(out_text)
     return(val, out_text)
 
@@ -1008,18 +1006,18 @@ def test_cont_loopback_two(ser, inst):
     val = 0
     out_text = "Loopback 2 resistance: "
     inst.write('sens:res:rang 10E3')                 # set resistance measurement range to 10Kohm
-    time.sleep(DELAY_TIME_INST)
+    time.sleep(DMM_DELAY_TIME)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     ser.write(b'*')                                  # set secondary mux to Loopback 2 mode
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     val = float(inst.query('meas:res?'))             # read resistance from the meter
     out_text += f"{val:,}" + " ohms"
-    time.sleep(DELAY_TIME_INST)
+    time.sleep(DMM_DELAY_TIME)
     ser.write(b'Z')                                  # set rst switches to high-Z and disable muxes
-    time.sleep(DELAY_TIME_SERIAL)
+    time.sleep(SERIAL_DELAY_TIME)
     inst.write('sens:res:rang 100E6')                # set resistance measurement range back to 100 MOhm
-    time.sleep(DELAY_TIME_INST)
+    time.sleep(DMM_DELAY_TIME)
     print(out_text)
     return(val, out_text)
 
@@ -1182,7 +1180,7 @@ Parameters:
 Returns:
     Python OAuth credentials object, or None if initialization error
 '''
-def get_creds(token_filename="token.json", cred_filename="credentials.json", scopes=SCOPES):
+def get_creds(token_filename=TOKEN_FILE_DEFAULT, cred_filename=CRED_FILE_DEFAULT, scopes=SCOPES):
     try:
         creds = None
         # The file token.json stores the user's access and refresh tokens, and is
