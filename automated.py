@@ -28,8 +28,15 @@ def main():
     try:
         datetime_now = dt.datetime.now()
         rm = pyvisa.ResourceManager()
+        ser = None
+        inst = None
+        psu = None
+        tester_serial_number = None
         ser, inst, psu, tester_serial_number = init_equipment_with_config(rm)
-
+        #print(ser)
+        #print(inst)
+        #print(psu)
+        #print(tester_serial_number)
         print("\nSetup Instructions:\n" +
             "- Plug sensor into connector on primary mux board\n" +
             "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
@@ -141,77 +148,77 @@ def main():
                 array_stage_text = ARRAY_ASSY_TYPES[array_stage_raw]
             print("Running tests for '" + array_stage_text + "' array type...")
 
-            # Check if full path already exists, or allows user to make a new directory
-            path = PATH_BASE + array_stage_text.title() + "\\"
-            if (os.path.exists(path + dut_name_input)):
+        # Check if full path already exists, or allows user to make a new directory
+        path = PATH_BASE + array_stage_text.title() + "\\"
+        if (os.path.exists(path + dut_name_input)):
+            path += dut_name_input + "\\"
+        else:
+            valid_responses = ['Y', 'N']
+            print("\nAre you sure you want to make a new directory " + path + dut_name_input + "?")
+            make_new_path = query_valid_response(valid_responses)
+            if (make_new_path.upper() == 'Y'):
                 path += dut_name_input + "\\"
+                os.makedirs(path)
             else:
-                valid_responses = ['Y', 'N']
-                print("\nAre you sure you want to make a new directory " + path + dut_name_input + "?")
-                make_new_path = query_valid_response(valid_responses)
-                if (make_new_path.upper() == 'Y'):
-                    path += dut_name_input + "\\"
-                    os.makedirs(path)
-                else:
-                    shutdown_equipment(ser, inst, psu, True)        
+                shutdown_equipment(ser, inst, psu, True)        
 
-            # Prompt user for the device assembly stage -- mandatory if it's a sensor module,
-            # not mandatory if it's a backplane or a sensor array
-            dut_name_full = dut_name_input
-            dut_stage_input = ""
-            if (array_stage_raw == 3):
+        # Prompt user for the device assembly stage -- mandatory if it's a sensor module,
+        # not mandatory if it's a backplane or a sensor array
+        dut_name_full = dut_name_input
+        dut_stage_input = ""
+        if (array_stage_raw == 3):
+            dut_name_full += "_"
+            while True:
+                try:
+                    dut_stage_input = input("\nPlease enter the module stage of assembly (e.g. onglass): ")
+                except ValueError:
+                    print("Sorry, array stage of assembly can't be blank")
+                    continue
+                if (len(dut_stage_input) < 1):
+                    print("Sorry, array stage of assembly can't be blank")
+                    continue
+                else:
+                    break
+        else:
+            dut_stage_input = input("\nPlease enter the stage of assembly, or leave blank: ")
+            if (len(dut_stage_input) > 0):
                 dut_name_full += "_"
-                while True:
-                    try:
-                        dut_stage_input = input("\nPlease enter the module stage of assembly (e.g. onglass): ")
-                    except ValueError:
-                        print("Sorry, array stage of assembly can't be blank")
-                        continue
-                    if (len(dut_stage_input) < 1):
-                        print("Sorry, array stage of assembly can't be blank")
-                        continue
-                    else:
-                        break
+
+        dut_name_full += dut_stage_input
+        print(str(array_tft_type) + "T test data for " + dut_name_full + " will save to path " + path + "\n")
+
+        out_string = ""
+        loop_one_res = 0
+        loop_two_res = 0
+
+        if (array_stage_raw in [1, 2]): # Runs loopback check on bare backplanes and sensor arrays not bonded to flex
+            print("Press 'q' to skip loopback check...")
+            (loop_one_res, loop_two_res) = test_loopback_resistance(ser, inst)
+            out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
+            out_string += "Loopback 2 resistance: " + str(loop_two_res) + " ohms" + "\n\n"
+            output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
+            output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
+            print("")
+        else:
+            loop_one_res_raw = test_cont_loopback_one(ser, inst)
+            time.sleep(1)
+            loop_two_res_raw = test_cont_loopback_two(ser, inst)
+            print("")
+            loop_one_res = loop_one_res_raw[0]
+            loop_two_res = loop_two_res_raw[0]
+            out_string += str(loop_one_res_raw[1]) + "\n"
+            out_string += str(loop_two_res_raw[1]) + "\n\n"
+            output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
+            output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
+
+        if (loop_one_res > RES_OPEN_THRESHOLD_LOOPBACKS or loop_two_res > RES_OPEN_THRESHOLD_LOOPBACKS):
+            print("WARNING: One or more loopbacks is open. Continue with test?")
+            valid_responses = {'Y': "continue", '': "exit program"}
+            query = query_valid_response(valid_responses)
+            if (query == 'Y'):
+                print("Continuing with tests...\n")
             else:
-                dut_stage_input = input("\nPlease enter the stage of assembly, or leave blank: ")
-                if (len(dut_stage_input) > 0):
-                    dut_name_full += "_"
-
-            dut_name_full += dut_stage_input
-            print(str(array_tft_type) + "T test data for " + dut_name_full + " will save to path " + path + "\n")
-
-            out_string = ""
-            loop_one_res = 0
-            loop_two_res = 0
-
-            if (array_stage_raw in [1, 2]): # Runs loopback check on bare backplanes and sensor arrays not bonded to flex
-                print("Press 'q' to skip loopback check...")
-                (loop_one_res, loop_two_res) = test_loopback_resistance(ser, inst)
-                out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
-                out_string += "Loopback 2 resistance: " + str(loop_two_res) + " ohms" + "\n\n"
-                output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
-                output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
-                print("")
-            else:
-                loop_one_res_raw = test_cont_loopback_one(ser, inst)
-                time.sleep(1)
-                loop_two_res_raw = test_cont_loopback_two(ser, inst)
-                print("")
-                loop_one_res = loop_one_res_raw[0]
-                loop_two_res = loop_two_res_raw[0]
-                out_string += str(loop_one_res_raw[1]) + "\n"
-                out_string += str(loop_two_res_raw[1]) + "\n\n"
-                output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
-                output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
-
-            if (loop_one_res > RES_OPEN_THRESHOLD_LOOPBACKS or loop_two_res > RES_OPEN_THRESHOLD_LOOPBACKS):
-                print("WARNING: One or more loopbacks is open. Continue with test?")
-                valid_responses = {'Y': "continue", '': "exit program"}
-                query = query_valid_response(valid_responses)
-                if (query == 'Y'):
-                    print("Continuing with tests...\n")
-                else:
-                    shutdown_equipment(ser, inst, psu, True)
+                shutdown_equipment(ser, inst, psu, True)
 
         with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_" + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
@@ -452,10 +459,10 @@ def main():
             sys.exit(0)
     except KeyboardInterrupt:
         print("\nProgram interrupted. Exiting program...")
-        shutdown_equipment(ser, inst, psu, True)
+        shutdown_equipment(ser, inst, psu)
     except Exception as err:
-        print("\nSoftware exception: " + err)
-        shutdown_equipment(ser, inst, psu, True)
+        print("\nSoftware exception: " + str(err))
+        shutdown_equipment(ser, inst, psu)
 
 if (__name__ == "__main__"):
     sys.exit(main())

@@ -326,128 +326,6 @@ def set_psu_off(psu, psu_wait=PSU_DELAY_TIME):
         return None
 
 '''
-Initializes and returns tuple with hardware and tester serial number
-Tries to setup hardware using dictionary of known tester hardware setups, or manual input,
-until hardware is properly initialized
-Returns hardware-- Arduino (serial), DMM (VISA), and PSU (VISA) objects-- and a tester hardware # (string)
-Parameters:
-    rm:                         A PyVISA resource manager object (rm)
-    tester_hw_config_list_in:   A list of dictionaries with tester hardware config options,
-                                by default TESTER_HW_CONFIG_LIST in tester_hw_configs.py
-                                Parameters: "tester_name", "serial_port",
-                                "dmm_serial_string", "psu_serial_string"
-    array_connection_list_in:   A list of interfaces to the array (strings), i.e. probe card,
-                                ZIF connector, or other interface,
-                                by default ARRAY_CONNECTION_LIST
-    using_usb_psu_in:           True if USB PSU should be set up, False if PSU shouldn't be setup
-Returns: A tuple with the following:
-    ser: Initialized PySerial object representing the tester's Arduino
-    dmm: Initialized PyVISA object representing the multimeter
-    psu: Initialized PyVISA object representing the power supply, or None if using_usb_psu_in is false
-    tester_serial_string: Serial number string, (hardware config name) + "__" + (array connection type)
-'''
-def init_equipment_with_config(rm, tester_hw_config_list_in=TESTER_HW_CONFIG_LIST,
-                               array_connection_list_in=ARRAY_CONNECTION_LIST,
-                               using_usb_psu_in=USING_USB_PSU):
-    # Attempt to connect using default configuration -- first element of tester_hw_config_list_in
-    # in tester_hw_configs.py
-    config_default = tester_hw_config_list_in[0]
-    config_name = config_default["tester_name"]
-    rm = pyvisa.ResourceManager()
-    ser = init_helper(init_serial(config_default["serial_port"]), False)
-    inst = init_helper(init_multimeter(rm, config_default["dmm_serial_string"]), False)
-    psu = None
-    if (using_usb_psu_in):
-        psu = init_helper(init_psu(rm, config_default["psu_serial_string"]))
-
-    # If default configuration successfully connects,
-    # - selecting 'enter' (default) will use that configuration
-    # - selecting 'N' will allow selecting of another configuration
-    #   or manually specifying the hardware
-    use_custom_config = False
-    success_config = (ser is not None) and (inst is not None) and (not (using_usb_psu_in and psu is None))
-    if (success_config):
-        valid_responses = {"": "continue with default tester config", "N": "specify custom tester config"}
-        override = query_valid_response(valid_responses)
-        if (override.lower() == "n"):
-            shutdown_equipment(ser, inst, psu, False)
-            ser = None
-            inst = None
-            psu = None
-            use_custom_config = True
-
-    # If default config fails to connect OR user specifies manual config
-    if ((not success_config) or use_custom_config):
-        print("")
-        if (success_config):
-            success_config = False
-        if ser is None:
-            print("Unable to connect to default port")
-        valid_responses = {}
-        # Loop until serial port, DMM, and PSU if applicable, are all successfully connected
-        # Ask user to either use a predefined hardware setup or specify a manual config
-        while (not success_config):
-            for i in range(len(tester_hw_config_list_in)):
-                valid_responses[str(i)] = tester_hw_config_list_in[i]["tester_name"]
-            valid_responses["M"] = "Set manual config"
-            print("Select the tester config from below.")
-            config_id = query_valid_response(valid_responses)
-            # If the user specifies manual config, input the serial port and DMM/PSU ID
-            # and try to connect
-            if (config_id.lower() == "m"):
-                config_name = "Manual"
-                serial_port_in = input("Enter serial port (e.g. COMx): ")
-                print("Sample VISA serial number: USB0::0x0000::0x0000::00000000::INSTR")
-                dmm_serial_in = input("Enter DMM VISA serial number: ")
-                ser = init_helper(init_serial(serial_port_in), False)
-                inst = init_helper(init_multimeter(rm, dmm_serial_in), False)
-                if (using_usb_psu_in):
-                    psu_serial_in = input("Enter PSU VISA serial number: ")
-                    psu = init_helper(init_psu(rm, psu_serial_in), False)
-            # Else, try to connect to the selected config
-            else:
-                config_id_index = int(config_id)
-                config_name = tester_hw_config_list_in[config_id_index]["tester_name"]
-                print("Using selected tester config: " + config_name)
-                ser = init_helper(init_serial(tester_hw_config_list_in[config_id_index]["serial_port"]), False)
-                inst = init_helper(init_multimeter(rm, tester_hw_config_list_in[config_id_index]["dmm_serial_string"]), False)
-                psu = None
-                if (using_usb_psu_in):
-                    psu = init_helper(init_psu(rm, tester_hw_config_list_in[config_id_index]["psu_serial_string"]), False)
-            success_config = (ser is not None) and (inst is not None) and (not (using_usb_psu_in and psu is None))
-            if (not success_config):
-                if (ser is not None):
-                    ser.close()
-                    ser = None
-                if (inst is not None):
-                    inst.close()
-                    inst = None
-                if (psu is not None):
-                    set_psu_off(psu)
-                    psu.close()
-                    psu = None
-                print("Could not connect with selected tester config\n")
-
-    print("Using tester config: " + config_name)
-    init_helper(set_psu_on(psu, PSU_DELAY_TIME))
-    # Query user for array connection type, e.g. probe card, ZIF, or something else
-    array_connection_default = array_connection_list_in[0]
-    valid_responses = {}
-    valid_responses[""] = array_connection_default + " (default)"
-    for i in range(1, len(array_connection_list_in)):
-        valid_responses[i] = array_connection_list_in[i]
-    print("\nSelect array connection type")
-    result_index = query_valid_response(valid_responses)
-    result_index = 0 if result_index == "" else int(result_index)
-    array_connection = array_connection_list_in[result_index]
-    print("Selected " + array_connection)
-
-    tester_serial_string = config_name + "__" + array_connection
-    print("Tester Serial Number: " + tester_serial_string)
-    return (ser, inst, psu, tester_serial_string)
-
-
-'''
 Writes (or tries) specified data to the serial port.
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
@@ -495,15 +373,151 @@ Parameters:
 Returns: None
 '''
 def shutdown_equipment(ser, inst, psu, exit_program=False, using_psu=USING_USB_PSU):
-    print("\nDisconnecting tester and DMM...")
-    ser.close()
-    inst.close()
-    if (using_psu):
+    if (ser is not None):
+        ser.close()
+        print("Disconnected tester")
+    else:
+        print("Tester not initialized")
+    if (inst is not None):
+        inst.close()
+        print("Disconnected DMM")
+    else:
+        print("DMM not initialized")
+    if (using_psu and (psu is not None)):
         set_psu_off(psu)
         psu.close()
+        print("Disconnected PSU")
+    else:
+        print("PSU not initialized")
     if (exit_program):
         print("Exiting program now...")
         sys.exit(0)
+
+'''
+Initializes and returns tuple with hardware and tester serial number
+Tries to setup hardware using dictionary of known tester hardware setups, or manual input,
+until hardware is properly initialized
+Returns hardware-- Arduino (serial), DMM (VISA), and PSU (VISA) objects-- and a tester hardware # (string)
+Parameters:
+    rm:                         A PyVISA resource manager object (rm)
+    tester_hw_config_list_in:   A list of dictionaries with tester hardware config options,
+                                by default TESTER_HW_CONFIG_LIST in tester_hw_configs.py
+                                Parameters: "tester_name", "serial_port",
+                                "dmm_serial_string", "psu_serial_string"
+    array_connection_list_in:   A list of interfaces to the array (strings), i.e. probe card,
+                                ZIF connector, or other interface,
+                                by default ARRAY_CONNECTION_LIST
+    using_usb_psu_in:           True if USB PSU should be set up, False if PSU shouldn't be setup
+Returns: A tuple with the following:
+    ser: Initialized PySerial object representing the tester's Arduino
+    dmm: Initialized PyVISA object representing the multimeter
+    psu: Initialized PyVISA object representing the power supply, or None if using_usb_psu_in is false
+    tester_serial_string: Serial number string, (hardware config name) + "__" + (array connection type)
+'''
+def init_equipment_with_config(rm, tester_hw_config_list_in=TESTER_HW_CONFIG_LIST,
+                               array_connection_list_in=ARRAY_CONNECTION_LIST,
+                               using_usb_psu_in=USING_USB_PSU):
+    ser = None
+    inst = None
+    psu = None
+    try:
+        # Attempt to connect using default configuration -- first element of tester_hw_config_list_in
+        # in tester_hw_configs.py
+        config_default = tester_hw_config_list_in[0]
+        config_name = config_default["tester_name"]
+        ser = init_helper(init_serial(config_default["serial_port"]), False)
+        inst = init_helper(init_multimeter(rm, config_default["dmm_serial_string"]), False)
+        if (using_usb_psu_in):
+            psu = init_helper(init_psu(rm, config_default["psu_serial_string"]))
+
+        # If default configuration successfully connects,
+        # - selecting 'enter' (default) will use that configuration
+        # - selecting 'N' will allow selecting of another configuration
+        #   or manually specifying the hardware
+        use_custom_config = False
+        success_config = (ser is not None) and (inst is not None) and (not (using_usb_psu_in and psu is None))
+        if (success_config):
+            valid_responses = {"": "continue with default tester config", "N": "specify custom tester config"}
+            override = query_valid_response(valid_responses)
+            if (override.lower() == "n"):
+                shutdown_equipment(ser, inst, psu, False, using_usb_psu_in)
+                ser = None
+                inst = None
+                psu = None
+                use_custom_config = True
+
+        # If default config fails to connect OR user specifies manual config
+        if ((not success_config) or use_custom_config):
+            print("")
+            if (success_config):
+                success_config = False
+            if ser is None:
+                print("Unable to connect to default port")
+            valid_responses = {}
+            # Loop until serial port, DMM, and PSU if applicable, are all successfully connected
+            # Ask user to either use a predefined hardware setup or specify a manual config
+            while (not success_config):
+                for i in range(len(tester_hw_config_list_in)):
+                    valid_responses[str(i)] = tester_hw_config_list_in[i]["tester_name"]
+                valid_responses["M"] = "Set manual config"
+                print("Select the tester config from below.")
+                config_id = query_valid_response(valid_responses)
+                # If the user specifies manual config, input the serial port and DMM/PSU ID
+                # and try to connect
+                if (config_id.lower() == "m"):
+                    config_name = "Manual"
+                    serial_port_in = input("Enter serial port (e.g. COMx): ")
+                    print("Sample VISA serial number: USB0::0x0000::0x0000::00000000::INSTR")
+                    dmm_serial_in = input("Enter DMM VISA serial number: ")
+                    ser = init_helper(init_serial(serial_port_in), False)
+                    inst = init_helper(init_multimeter(rm, dmm_serial_in), False)
+                    if (using_usb_psu_in):
+                        psu_serial_in = input("Enter PSU VISA serial number: ")
+                        psu = init_helper(init_psu(rm, psu_serial_in), False)
+                # Else, try to connect to the selected config
+                else:
+                    config_id_index = int(config_id)
+                    config_name = tester_hw_config_list_in[config_id_index]["tester_name"]
+                    print("Using selected tester config: " + config_name)
+                    ser = init_helper(init_serial(tester_hw_config_list_in[config_id_index]["serial_port"]), False)
+                    inst = init_helper(init_multimeter(rm, tester_hw_config_list_in[config_id_index]["dmm_serial_string"]), False)
+                    psu = None
+                    if (using_usb_psu_in):
+                        psu = init_helper(init_psu(rm, tester_hw_config_list_in[config_id_index]["psu_serial_string"]), False)
+                success_config = (ser is not None) and (inst is not None) and (not (using_usb_psu_in and psu is None))
+                if (not success_config):
+                    if (ser is not None):
+                        ser.close()
+                        ser = None
+                    if (inst is not None):
+                        inst.close()
+                        inst = None
+                    if (psu is not None):
+                        set_psu_off(psu)
+                        psu.close()
+                        psu = None
+                    print("Could not connect with selected tester config\n")
+
+        print("Using tester config: " + config_name)
+        init_helper(set_psu_on(psu, PSU_DELAY_TIME))
+        # Query user for array connection type, e.g. probe card, ZIF, or something else
+        array_connection_default = array_connection_list_in[0]
+        valid_responses = {}
+        valid_responses[""] = array_connection_default + " (default)"
+        for i in range(1, len(array_connection_list_in)):
+            valid_responses[i] = array_connection_list_in[i]
+        print("\nSelect array connection type")
+        result_index = query_valid_response(valid_responses)
+        result_index = 0 if result_index == "" else int(result_index)
+        array_connection = array_connection_list_in[result_index]
+        print("Selected " + array_connection)
+
+        tester_serial_string = config_name + "__" + array_connection
+        print("Tester Serial Number: " + tester_serial_string)
+        return (ser, inst, psu, tester_serial_string)
+    except KeyboardInterrupt:
+        print("\nProgram interrupted. Exiting program...")
+        shutdown_equipment(ser, inst, psu, True, using_usb_psu_in)
 
 # Test routines
 '''
