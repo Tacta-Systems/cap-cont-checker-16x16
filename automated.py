@@ -33,10 +33,6 @@ def main():
         psu = None
         tester_serial_number = None
         ser, inst, psu, tester_serial_number = init_equipment_with_config(rm)
-        #print(ser)
-        #print(inst)
-        #print(psu)
-        #print(tester_serial_number)
         print("\nSetup Instructions:\n" +
             "- Plug sensor into connector on primary mux board\n" +
             "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
@@ -187,17 +183,21 @@ def main():
         dut_name_full += dut_stage_input
         print(str(array_tft_type) + "T test data for " + dut_name_full + " will save to path " + path + "\n")
 
-        out_string = ""
         loop_one_res = 0
         loop_two_res = 0
+        out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\n" +
+                    "Array ID: " + dut_name_input + "\n" +
+                    "Array Stage: " + dut_stage_input + "\n" +
+                    "Array Type: " + array_stage_text + "\n" +
+                    "TFT Type: " + str(array_tft_type) + "T\n" +
+                    "Tester S/N: " + tester_serial_number + "\n" +
+                    "\nIf there are shorts, the output (.) means open and (X) means short\n\n")
 
         if (array_stage_raw in [1, 2]): # Runs loopback check on bare backplanes and sensor arrays not bonded to flex
             print("Press 'q' to skip loopback check...")
             (loop_one_res, loop_two_res) = test_loopback_resistance(ser, inst)
             out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
             out_string += "Loopback 2 resistance: " + str(loop_two_res) + " ohms" + "\n\n"
-            output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
-            output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
             print("")
         else:
             loop_one_res_raw = test_cont_loopback_one(ser, inst)
@@ -208,8 +208,6 @@ def main():
             loop_two_res = loop_two_res_raw[0]
             out_string += str(loop_one_res_raw[1]) + "\n"
             out_string += str(loop_two_res_raw[1]) + "\n\n"
-            output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
-            output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
 
         if (loop_one_res > RES_OPEN_THRESHOLD_LOOPBACKS or loop_two_res > RES_OPEN_THRESHOLD_LOOPBACKS):
             print("WARNING: One or more loopbacks is open. Continue with test?")
@@ -223,13 +221,6 @@ def main():
         with open(path + datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_input + "_" + dut_stage_input + "_loopback_measurements.csv", 'w', newline='') as file:
             file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
             file.write(str(loop_one_res) + "," + str(loop_two_res))
-
-        output_payload_gsheets_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d %H:%M:%S')
-        output_payload_gsheets_dict["Tester Serial Number"] = tester_serial_number
-        output_payload_gsheets_dict["Array Serial Number"]  = dut_name_input
-        output_payload_gsheets_dict["Array Type"]           = array_stage_text
-        output_payload_gsheets_dict["Array Module Stage"]   = dut_stage_input
-        output_payload_gsheets_dict["TFT Type"]             = str(array_tft_type) + "T"
 
         if (array_tft_type == 1):
             special_test_state = 0
@@ -342,53 +333,8 @@ def main():
 
         # 3T array testing
         elif (array_tft_type == 3):
-            cont_row_to_column    = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
-            cont_row_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
-            cont_row_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
-            cont_col_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
-            cont_col_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
-            cont_col_to_vdd       = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VDD")
-            cont_col_to_vrst      = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VRST")
-            cont_rst_to_column    = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_COL")
-            cont_rst_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_SHIELD")
-            cont_rst_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_PZBIAS")
-            cont_vdd_to_shield    = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_SHIELD")
-            cont_vdd_to_pzbias    = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_PZBIAS")
-            cont_vrst_to_shield   = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_SHIELD")
-            cont_vrst_to_pzbias   = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_PZBIAS")
-            cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
-
-            out_string += cont_row_to_column[1] + "\n"
-            out_string += cont_row_to_pzbias[1] + "\n"
-            out_string += cont_row_to_shield[1] + "\n"
-            out_string += cont_col_to_pzbias[1] + "\n"
-            out_string += cont_col_to_shield[1] + "\n"
-            out_string += cont_col_to_vdd[1] + "\n"
-            out_string += cont_col_to_vrst[1] + "\n"
-            out_string += cont_rst_to_column[1] + "\n"
-            out_string += cont_rst_to_shield[1] + "\n"
-            out_string += cont_rst_to_pzbias[1] + "\n"
-            out_string += cont_vdd_to_shield[1] + "\n"
-            out_string += cont_vdd_to_pzbias[1] + "\n"
-            out_string += cont_vrst_to_shield[1] + "\n"
-            out_string += cont_vrst_to_pzbias[1] + "\n"
-            out_string += cont_shield_to_pzbias[1]
-
-            output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
-            output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
-            output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
-            output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
-            output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
-            output_payload_gsheets_dict["Col to Vdd (# shorts)"]    = cont_col_to_vdd[0]
-            output_payload_gsheets_dict["Col to Vrst (# shorts)"]   = cont_col_to_vrst[0]
-            output_payload_gsheets_dict["Rst to Col (# shorts)"]    = cont_rst_to_column[0]
-            output_payload_gsheets_dict["Rst to SHIELD (# shorts)"] = cont_rst_to_shield[0]
-            output_payload_gsheets_dict["Rst to PZBIAS (# shorts)"] = cont_rst_to_pzbias[0]
-            output_payload_gsheets_dict["Vdd to SHIELD (ohm)"]      = cont_vdd_to_shield[0]
-            output_payload_gsheets_dict["Vdd to PZBIAS (ohm)"]      = cont_vdd_to_pzbias[0]
-            output_payload_gsheets_dict["Vrst to SHIELD (ohm)"]     = cont_vrst_to_shield[0]
-            output_payload_gsheets_dict["Vrst to PZBIAS (ohm)"]     = cont_vrst_to_pzbias[0]
-            output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
+            output_payload_gsheets_dict, out_string_test = test_cont_array_3t(ser, inst, psu, path, dut_name_full)
+            out_string += out_string_test
         else:
             print("Undefined array TFT type, skipping all tests...")
             pass
@@ -397,16 +343,18 @@ def main():
 
         output_filename = datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_full + "_summary.txt"
         output_filename_full = path + output_filename
-        out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\n" +
-                    "Array ID: " + dut_name_input + "\n" +
-                    "Array Stage: " + dut_stage_input + "\n" +
-                    "Array Type: " + array_stage_text + "\n" +
-                    "TFT Type: " + str(array_tft_type) + "T\n" +
-                    "Tester S/N: " + tester_serial_number + "\n" +
-                    "\nIf there are shorts, the output (.) means open and (X) means short\n\n") + out_string
 
         with open(output_filename_full, 'w', newline='') as file:
             file.write(out_string)
+
+        output_payload_gsheets_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d %H:%M:%S')
+        output_payload_gsheets_dict["Tester Serial Number"] = tester_serial_number
+        output_payload_gsheets_dict["Array Serial Number"]  = dut_name_input
+        output_payload_gsheets_dict["Array Type"]           = array_stage_text
+        output_payload_gsheets_dict["Array Module Stage"]   = dut_stage_input
+        output_payload_gsheets_dict["TFT Type"]             = str(array_tft_type) + "T"
+        output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
+        output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
 
         output_payload_gsheets = list(output_payload_gsheets_dict.values())
         write_success = write_to_spreadsheet(creds, output_payload_gsheets)

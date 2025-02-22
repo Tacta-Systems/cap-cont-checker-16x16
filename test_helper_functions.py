@@ -59,6 +59,10 @@ from tester_hw_configs import *
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
 
+# Environment variable to track power supply state
+# -1: OFF, 0: Undetermined, 1: ON
+PSU_IS_ON_NOW = 0
+
 '''
 Dictionary used to store results from tests
 Results are uploaded to Google Sheets in this order
@@ -268,6 +272,8 @@ TODO: implement equipment type check that quits if this address is not actually 
 NOTE: remember to run 'psu.close()' when done with the PSU
 '''
 def init_psu(rm, psu_id=PSU_SERIAL_STRING_DEFAULT):
+    global PSU_IS_ON_NOW
+    PSU_IS_ON_NOW = 0
     try:
         psu = rm.open_resource(psu_id)
         print("Connected to VISA PSU!")
@@ -284,26 +290,33 @@ def init_psu(rm, psu_id=PSU_SERIAL_STRING_DEFAULT):
 Turns on the BK power supply
 Parameters: 
     psu: A PyVISA object containing the initialized power supply
-    psu:wait: The time to wait for the power supply to turn on
+    psu_wait: The time to wait for the power supply to turn on
 Returns:
     True if successfully turned PSU on, None if PSU not successfully turned on
 '''
 def set_psu_on(psu, psu_wait=PSU_DELAY_TIME):
-    print("PSU turning on...")
-    try:
-        # set PSU voltage to 18V, current limits to 0.05A on (-) and 0.075A on (+)
-        psu.write('INST:SEL 0')
-        psu.write('APPL 18,0.05')
-        psu.write('OUTP:STAT 1')
-        psu.write('INST:SEL 1')
-        psu.write('APPL 18,0.075')
-        psu.write('OUTP:STAT 1')
-        time.sleep(psu_wait)
-        print("PSU on!")
+    global PSU_IS_ON_NOW
+    if (PSU_IS_ON_NOW == 1):
+        print("PSU already on")
         return True
-    except Exception as e:
-        print("ERROR: couldn't turn on VISA power supply...")
-        return None
+    else:
+        print("PSU turning on...")
+        try:
+            # set PSU voltage to 18V, current limits to 0.05A on (-) and 0.075A on (+)
+            psu.write('INST:SEL 0')
+            psu.write('APPL 18,0.05')
+            psu.write('OUTP:STAT 1')
+            psu.write('INST:SEL 1')
+            psu.write('APPL 18,0.075')
+            psu.write('OUTP:STAT 1')
+            time.sleep(psu_wait)
+            print("PSU on!")
+            PSU_IS_ON_NOW = 1
+            return True
+        except Exception as e:
+            print("ERROR: couldn't turn on VISA power supply...")
+            PSU_IS_ON_NOW = 0 # undetermined
+            return None
 
 '''
 Turns off the BK power supply. Will not be successful if the PSU object has already been closed.
@@ -315,15 +328,22 @@ Returns:
 NOTE: remember to run 'psu.close()' when done with the PSU
 '''
 def set_psu_off(psu, psu_wait=PSU_DELAY_TIME):
-    print("Turning PSU off...")
-    try:
-        psu.write('OUTP:ALL 0')
-        time.sleep(psu_wait)
-        print("PSU off!")
+    global PSU_IS_ON_NOW
+    if (PSU_IS_ON_NOW == -1):
+        print("PSU already off")
         return True
-    except Exception as e:
-        print("ERROR: couldn't turn off VISA power supply...")
-        return None
+    else:
+        print("Turning PSU off...")
+        try:
+            psu.write('OUTP:ALL 0')
+            time.sleep(psu_wait)
+            print("PSU off!")
+            PSU_IS_ON_NOW = -1
+            return True
+        except Exception as e:
+            print("ERROR: couldn't turn off VISA power supply...")
+            PSU_IS_ON_NOW = 0 # undetermined
+            return None
 
 '''
 Writes (or tries) specified data to the serial port.
@@ -527,9 +547,10 @@ Test measures the difference between (row TFT on cap) - (row TFT off cap)
 by first iterating through row TFT's and toggling them to +15V (on) or -8V (off).
 Inside, it iterates through all the columns and measures capacitance between column[x]
 and the specified node (e.g. PZBIAS)
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
-    inst: PyVISA object that has been initialized (e.g. DMM or PSU)
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
     path: Path to save output files to
     dut_name_raw: Raw name of the DUT (e.g. E2412-001-007-D2_T1)
     dut_stage_raw: Stage of assembly in plaintext (e.g. Post_Flex_Bond_ETest)
@@ -634,9 +655,10 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
 
 '''
 Two-dimensional test that measures continuity at every intersection, e.g. row to column.
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
-    inst: PyVISA object that has been initialized (e.g. DMM or PSU)
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
     path: Path to save output files to
     dut_name: Full name of device + stage of test
     test_id: Test mode to run, one of the ones specified in CONT_DICT_TWO_DIM
@@ -716,9 +738,10 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
 
 '''
 One-dimensional test that measures continuity at intersections to a node, e.g. column to PZBIAS
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
-    inst: PyVISA object that has been initialized (e.g. DMM or PSU)
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
     path: Path to save output files to
     dut_name: Full name of device + stage of test
     test_id: Test mode to run, one of the ones specified in CONT_DICT_ONE_DIM
@@ -776,9 +799,10 @@ def test_cont_one_dim(ser, inst, path, dut_name, test_id, start_ind=0, end_ind=1
 
 '''
 Measures continuity across two nodes, e.g. PZBIAS to SHIELD
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
-    inst: PyVISA object that has been initialized (e.g. DMM or PSU)
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
     path: Path to save output files to
     dut_name: Full name of device + stage of test
     test_id: Test mode to run, one of the ones specified in CONT_DICT_NODE
@@ -818,9 +842,10 @@ def test_cont_node(ser, inst, path, dut_name, test_id):
 
 '''
 Measures continuity between column and PZBIAS while toggling the row TFT's on and off (to +15V and -8V)
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
-    inst: PyVISA object that has been initialized (e.g. DMM or PSU)
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
     path: Path to save output files to
     dut_name: Full name of device + stage of test    
     start_row: Row # to start iterating through (typically 0)
@@ -896,6 +921,7 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
 
 '''
 Placeholder function that sweeps through the reset lines on the primary mux board
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
     start_rst: Rst # to start iterating through (typically 0)
@@ -920,9 +946,10 @@ Interactive function that helps with alignment of flex presser/probe card fixtur
 to ensure proper loopback connectivity. Beeps one way (loop1_name) if only LoopA makes contact,
 beeps another way (loop2_name) if only LoopB makes contact, and beeps a third way (both_loops_name)
 when both loopbacks make contact
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
-    inst: PyVISA object that has been initialized (e.g. DMM or PSU)
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
     num_counts: Function waits this number of measurement cycles with both loopbacks connected before exiting,
                 to ensure stable continuity
     loop1_name: Name of file to play when Loopback A makes contact
@@ -979,9 +1006,10 @@ def test_loopback_resistance(ser, inst, num_counts=10, loop1_name=LOOP1_SOUND_FI
 
 '''
 Measures Loopback 1 resistance
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
-    inst: PyVISA object that has been initialized (e.g. DMM or PSU)
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
 Returns:
     Tuple containing:
         Loopback 1 resistance (float)
@@ -1008,9 +1036,10 @@ def test_cont_loopback_one(ser, inst):
 
 '''
 Measures Loopback 2 resistance
+***PREREQUISITE: Power supply to tester boards MUST be on!
 Parameters:
     ser: PySerial object that has been initialized to the Arduino's serial port
-    inst: PyVISA object that has been initialized (e.g. DMM or PSU)
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
 Returns:
     Tuple containing:
         Loopback 2 resistance (float)
@@ -1034,6 +1063,74 @@ def test_cont_loopback_two(ser, inst):
     time.sleep(DMM_DELAY_TIME)
     print(out_text)
     return(val, out_text)
+
+'''
+Run full battery of continuity tests for 3T arrays
+Will turn on the power supply if not already on, and turn it off when done.
+Parameters:
+    ser:  PySerial object that has been initialized to the Arduino's serial port
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
+    path: Path to save the output files for each test
+    dut_name_full: name of the device under test
+Returns: a tuple with the following:
+    output_payload_gsheets_dict: A dictionary with key/value pairs for each test output,
+                                 intended to update a database like the GSheets
+    out_string: A string with each test output summary on its own line, intended for summary text file
+'''
+def test_cont_array_3t(ser, inst, psu, path, dut_name_full, using_usb_psu_in=USING_USB_PSU):
+    global PSU_IS_ON_NOW
+    if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
+        set_psu_on(psu)
+    cont_row_to_column    = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
+    cont_row_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
+    cont_row_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
+    cont_col_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
+    cont_col_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
+    cont_col_to_vdd       = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VDD")
+    cont_col_to_vrst      = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_VRST")
+    cont_rst_to_column    = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_COL")
+    cont_rst_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_SHIELD")
+    cont_rst_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_RST_TO_PZBIAS")
+    cont_vdd_to_shield    = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_SHIELD")
+    cont_vdd_to_pzbias    = test_cont_node(ser, inst, path, dut_name_full, "CONT_VDD_TO_PZBIAS")
+    cont_vrst_to_shield   = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_SHIELD")
+    cont_vrst_to_pzbias   = test_cont_node(ser, inst, path, dut_name_full, "CONT_VRST_TO_PZBIAS")
+    cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
+
+    out_string = cont_row_to_column[1] + "\n"
+    out_string += cont_row_to_pzbias[1] + "\n"
+    out_string += cont_row_to_shield[1] + "\n"
+    out_string += cont_col_to_pzbias[1] + "\n"
+    out_string += cont_col_to_shield[1] + "\n"
+    out_string += cont_col_to_vdd[1] + "\n"
+    out_string += cont_col_to_vrst[1] + "\n"
+    out_string += cont_rst_to_column[1] + "\n"
+    out_string += cont_rst_to_shield[1] + "\n"
+    out_string += cont_rst_to_pzbias[1] + "\n"
+    out_string += cont_vdd_to_shield[1] + "\n"
+    out_string += cont_vdd_to_pzbias[1] + "\n"
+    out_string += cont_vrst_to_shield[1] + "\n"
+    out_string += cont_vrst_to_pzbias[1] + "\n"
+    out_string += cont_shield_to_pzbias[1]
+
+    output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
+    output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
+    output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
+    output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
+    output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
+    output_payload_gsheets_dict["Col to Vdd (# shorts)"]    = cont_col_to_vdd[0]
+    output_payload_gsheets_dict["Col to Vrst (# shorts)"]   = cont_col_to_vrst[0]
+    output_payload_gsheets_dict["Rst to Col (# shorts)"]    = cont_rst_to_column[0]
+    output_payload_gsheets_dict["Rst to SHIELD (# shorts)"] = cont_rst_to_shield[0]
+    output_payload_gsheets_dict["Rst to PZBIAS (# shorts)"] = cont_rst_to_pzbias[0]
+    output_payload_gsheets_dict["Vdd to SHIELD (ohm)"]      = cont_vdd_to_shield[0]
+    output_payload_gsheets_dict["Vdd to PZBIAS (ohm)"]      = cont_vdd_to_pzbias[0]
+    output_payload_gsheets_dict["Vrst to SHIELD (ohm)"]     = cont_vrst_to_shield[0]
+    output_payload_gsheets_dict["Vrst to PZBIAS (ohm)"]     = cont_vrst_to_pzbias[0]
+    output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
+    if (using_usb_psu_in):
+        set_psu_off(psu)
+    return (output_payload_gsheets_dict, out_string)
 
 # helper functions for file compare/diff
 '''
