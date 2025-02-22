@@ -666,12 +666,14 @@ Parameters:
     start_dim2: Dim2 (e.g. col) # to start iterating through (typically 0)
     end_dim1: Dim1 (e.g. row) # to end iterating through (typically 16)
     end_dim2: Dim2 (e.g. col) # to end iterating through (typically 16)
+    res_threshold: Threshold below which a measurement is considered a short
 Returns:
     Tuple, with following parameters:
         Total number of shorts detected
         Output text (to be appended to summary file)
 '''
-def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_dim2=0, end_dim1=16, end_dim2=16):
+def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_dim2=0,
+                      end_dim1=16, end_dim2=16, res_threshold = RES_SHORT_THRESHOLD_ROWCOL):
     test_name = test_id.upper()
     if (test_name not in CONT_DICT_TWO_DIM):
         out_text = "ERROR: 2D node resistance check " + test_name + " not valid...\n"
@@ -710,7 +712,7 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
                 serial_write_with_delay(ser, b'O')                              # set mode to continuity check
                 val = float(inst_query_with_delay(inst, 'meas:res?'))           # read resistance measurement
                 out_array[(16-dim1_cnt)+1][dim2_cnt+1] = val
-                if (val < RES_SHORT_THRESHOLD_ROWCOL):
+                if (val < res_threshold):
                     num_shorts += 1
                 writer.writerow([str(dim1_cnt+1), str(dim2_cnt+1), val])
             print_progress_bar(dim1_cnt+1, 16, suffix = dim1_name + " " + str(dim1_cnt+1) + "/16", length = 16)
@@ -725,7 +727,7 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
     if (num_shorts > 0):
         for dim1_cnt in range(out_array.shape[0]):
             for dim2_cnt in range(out_array.shape[1]):
-                if (float(out_array[dim1_cnt][dim2_cnt]) > RES_SHORT_THRESHOLD_ROWCOL):
+                if (float(out_array[dim1_cnt][dim2_cnt]) > res_threshold):
                     print(".", end="")
                     out_text += "."
                 else:
@@ -747,12 +749,14 @@ Parameters:
     test_id: Test mode to run, one of the ones specified in CONT_DICT_ONE_DIM
     start_ind: Dim1 (e.g. col) # to start iterating through (typically 0)
     end_ind: Dim1 (e.g. col) # to end iterating through (typically 16)
+    res_threshold: Threshold below which a measurement is considered a short
 Returns:
     Tuple, with following parameters:
         Total number of shorts detected
         Output text (to be appended to summary file)
 '''
-def test_cont_one_dim(ser, inst, path, dut_name, test_id, start_ind=0, end_ind=16):
+def test_cont_one_dim(ser, inst, path, dut_name, test_id, start_ind=0,
+                      end_ind=16, res_threshold=RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
     test_name = test_id.upper()
     primary_mux_state = test_name.split("_")[1].capitalize()
     if (test_name not in CONT_DICT_ONE_DIM):
@@ -781,7 +785,7 @@ def test_cont_one_dim(ser, inst, path, dut_name, test_id, start_ind=0, end_ind=1
             serial_write_with_delay(ser, b'O')                     # set mode to continuity check mode
             val = float(inst_query_with_delay(inst, 'meas:res?'))  # read resistance from the meter
             writer.writerow([str(ind+1), val])                  # write value to CSV
-            if (val < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+            if (val < res_threshold):
                 num_shorts += 1
                 summary_text += "X"
             else:
@@ -806,12 +810,13 @@ Parameters:
     path: Path to save output files to
     dut_name: Full name of device + stage of test
     test_id: Test mode to run, one of the ones specified in CONT_DICT_NODE
+    res_threshold: Threshold below which a measurement is considered a short
 Returns:
     Tuple, with following parameters:
         Resistance across two nodes
         Output text (to be appended to summary file)
 '''
-def test_cont_node(ser, inst, path, dut_name, test_id):
+def test_cont_node(ser, inst, path, dut_name, test_id, res_threshold=RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
     test_name = test_id.upper()
     if (test_name not in CONT_DICT_NODE):
         out_text = "ERROR: 1D Node resistance check " + test_name + " not valid...\n"
@@ -833,7 +838,7 @@ def test_cont_node(ser, inst, path, dut_name, test_id):
         time.sleep(DMM_DELAY_TIME)
         file.close()
     serial_write_with_delay(ser, b'Z')                               # set rst switches to high-Z and disable muxes
-    if (val > RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+    if (val > res_threshold):
         out_text += "\n" + test_name + " does not have shorts\n"
     else:
         out_text += "\n" + test_name + " has shorts\n"
@@ -852,12 +857,14 @@ Parameters:
     start_col: Col # to start iterating through (typically 0)
     end_row: Row # to end iterating through (typically 16)
     end_col: Col # to end iterating through (typically 16)
+    res_threshold: Threshold below which a measurement is considered a short
 Returns:
     Tuple, with following parameters:
         Total number of shorts detected
         Output text (to be appended to summary file)
 '''
-def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_row=16, start_col=0, end_col=16):
+def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_row=16,
+                                    start_col=0, end_col=16, res_threshold=RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
     test_name = "CONT_COL_TO_PZBIAS_TFTS_ON"
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     num_shorts = 0
@@ -891,7 +898,7 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
                 serial_write_with_delay(ser, bytes(hex(col)[2:], 'utf-8'))         # write column index
                 serial_write_with_delay(ser, b'P')                 # "ON" measurement - cap. check mode puts row switches in +15/-8V mode
                 tft_on_meas = float(inst_query_with_delay(inst, 'meas:res?'))      # read mux on measurement
-                if (tft_on_meas < RES_SHORT_THRESHOLD_RC_TO_PZBIAS):
+                if (tft_on_meas < res_threshold):
                     num_shorts += 1
                 out_array[(16-row)+1][col+1] = tft_on_meas
                 writer.writerow([str(row+1), str(col+1), tft_on_meas]) # appends to CSV with 1 index
@@ -908,7 +915,7 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
     if (num_shorts > 0):
         for row in range(out_array.shape[0]):
             for col in range(out_array.shape[1]):
-                if (float(out_array[row][col]) > RES_SHORT_THRESHOLD_ROWCOL):
+                if (float(out_array[row][col]) > res_threshold):
                     print(".", end="")
                     out_text += "."
                 else:
@@ -963,7 +970,8 @@ Returns:
 '''
 def test_loopback_resistance(ser, inst, num_counts=10, loop1_name=LOOP1_SOUND_FILE_DEFAULT,
                              loop2_name=LOOP2_SOUND_FILE_DEFAULT,
-                             both_loops_name=BOTH_LOOPS_SOUND_FILE_DEFAULT, silent=SILENT_MODE_DEFAULT):
+                             both_loops_name=BOTH_LOOPS_SOUND_FILE_DEFAULT, silent=SILENT_MODE_DEFAULT,
+                             res_threshold=RES_SHORT_THRESHOLD_ROWCOL):
     mixer.init()
     loop1 = mixer.Sound(loop1_name)
     loop2 = mixer.Sound(loop2_name)
@@ -984,16 +992,16 @@ def test_loopback_resistance(ser, inst, num_counts=10, loop1_name=LOOP1_SOUND_FI
         val2_str = "{:.4e}".format(val2)
         time.sleep(DMM_DELAY_TIME)
         print("LOOP1 OHM " + val1_str + " LOOP2 OHM " + val2_str, end='\r')
-        if (val1 < RES_SHORT_THRESHOLD_ROWCOL and val2 < RES_SHORT_THRESHOLD_ROWCOL):
+        if (val1 < res_threshold and val2 < res_threshold):
             if not silent:
                 both_loops.play()
             time.sleep(0.5)
             count += 1
-        elif (val1 < RES_SHORT_THRESHOLD_ROWCOL):
+        elif (val1 < res_threshold):
             if not silent:
                 loop1.play()
             time.sleep(0.25)
-        elif (val2 < RES_SHORT_THRESHOLD_ROWCOL):
+        elif (val2 < res_threshold):
             if not silent:
                 loop2.play()
             time.sleep(0.25)
@@ -1065,13 +1073,104 @@ def test_cont_loopback_two(ser, inst):
     return(val, out_text)
 
 '''
-Run full battery of continuity tests for 3T arrays
+Run capacitance and TFT tests for 1T arrays
 Will turn on the power supply if not already on, and turn it off when done.
 Parameters:
     ser:  PySerial object that has been initialized to the Arduino's serial port
     inst: PyVISA object that has been initialized (i.e. the DMM in this case)
+    psu:  PyVISA object that has been initialized (i.e. the PSU in this case)
+    path: Path to save the output files for each test
+    dut_name_raw: Raw name of the DUT (e.g. E2412-001-007-D2_T1)
+    dut_stage_raw: Stage of assembly in plaintext (e.g. Post_Flex_Bond_ETest)
+    dut_type: If the device is a backplane, sensor array, or sensor module    
+    using_usb_psu_in: True if USB PSU should be set up, False if PSU shouldn't be setup
+Returns: a tuple with the following:
+    output_payload_gsheets_dict: A dictionary with key/value pairs for each test output,
+                                 intended to update a database like the GSheets
+    out_string: A string with each test output summary on its own line, intended for summary text file
+'''
+def test_cap_tft_array_1t(ser, inst, psu, path, dut_name_raw, dut_stage_raw, dut_type,
+                          using_usb_psu_in=USING_USB_PSU):
+    global PSU_IS_ON_NOW
+    dut_name_full = dut_name_raw + dut_stage_raw
+    print("Running cap and TFT continuity tests...")
+    if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
+        set_psu_on(psu)
+    valid_responses = {'': "run cap test with default 1nF range", 1: "run cap test with 10nF range"}
+    test_selection_raw = query_valid_response(valid_responses)
+    meas_range_input = '1e-9'
+    if (test_selection_raw == "1"):
+        meas_range_input = '1e-8'
+        print("Running cap test with new 10nF range...\n")
+    else:
+        meas_range_input = '1e-9'
+        print("Running cap test with default 1nF range...\n")
+    test_cap_out = test_cap(ser, inst, path, dut_name_raw, dut_stage_raw,
+                            "CAP_COL_TO_PZBIAS", dut_type, meas_range_input)
+    test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_full)
+
+    out_string = "\n" + test_cap_out[1]
+    out_string += test_cont_col_to_pzbias_tfts_on_out[1]
+    output_payload_gsheets_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
+    output_payload_gsheets_dict["Col to PZBIAS with TFT's ON (# shorts)"] = test_cont_col_to_pzbias_tfts_on_out[0]
+    if (using_usb_psu_in):
+        set_psu_off(psu)
+    return (output_payload_gsheets_dict, out_string)
+'''
+Run full panel of continuity tests for 1T arrays
+Will turn on the power supply if not already on, and turn it off when done.
+Parameters:
+    ser:  PySerial object that has been initialized to the Arduino's serial port
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
+    psu:  PyVISA object that has been initialized (i.e. the PSU in this case)
     path: Path to save the output files for each test
     dut_name_full: name of the device under test
+    using_usb_psu_in: True if USB PSU should be set up, False if PSU shouldn't be setup
+Returns: a tuple with the following:
+    output_payload_gsheets_dict: A dictionary with key/value pairs for each test output,
+                                 intended to update a database like the GSheets
+    out_string: A string with each test output summary on its own line, intended for summary text file
+    has_shorts: Boolean, true if any of the tests yield shorts with resistance below threshold
+'''
+def test_cont_array_1t(ser, inst, psu, path, dut_name_full, using_usb_psu_in=USING_USB_PSU):
+    global PSU_IS_ON_NOW
+    if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
+        set_psu_on(psu)
+    cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
+    cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
+    cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
+    cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
+    cont_col_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
+    cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
+
+    out_string = cont_row_to_column[1] + "\n"
+    out_string += cont_row_to_pzbias[1] + "\n"
+    out_string += cont_row_to_shield[1] + "\n"
+    out_string += cont_col_to_pzbias[1] + "\n"
+    out_string += cont_col_to_shield[1] + "\n"
+    out_string += cont_shield_to_pzbias[1]
+
+    output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
+    output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
+    output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
+    output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
+    output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
+    output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
+    has_shorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0 or cont_shield_to_pzbias[0]=="FAIL"
+    if (using_usb_psu_in):
+        set_psu_off(psu)
+    return (output_payload_gsheets_dict, out_string, has_shorts)
+
+'''
+Run full panel of continuity tests for 3T arrays
+Will turn on the power supply if not already on, and turn it off when done.
+Parameters:
+    ser:  PySerial object that has been initialized to the Arduino's serial port
+    inst: PyVISA object that has been initialized (i.e. the DMM in this case)
+    psu:  PyVISA object that has been initialized (i.e. the PSU in this case)
+    path: Path to save the output files for each test
+    dut_name_full: name of the device under test
+    using_usb_psu_in: True if USB PSU should be set up, False if PSU shouldn't be setup
 Returns: a tuple with the following:
     output_payload_gsheets_dict: A dictionary with key/value pairs for each test output,
                                  intended to update a database like the GSheets

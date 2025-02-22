@@ -237,71 +237,18 @@ def main():
                 print("Running all tests...\n")
 
             if (special_test_state == 1): # only run capacitance and TFT ON tests
-                valid_responses = {'': "run cap test with default 1nF range", 1: "run cap test with 10nF range"}
-                test_selection_raw = query_valid_response(valid_responses)
-                meas_range_input = '1e-9'
-                if (test_selection_raw == "1"):
-                    meas_range_input = '1e-8'
-                    print("Running cap test with new 10nF range...\n")
-                else:
-                    meas_range_input = '1e-9'
-                    print("Running cap test with default 1nF range...\n")
-                test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_stage_input,
-                                        "CAP_COL_TO_PZBIAS", array_stage_text, meas_range_input)
-                test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_full)
-
-                out_string += "\n" + test_cap_out[1]
-                out_string += test_cont_col_to_pzbias_tfts_on_out[1]
-                output_payload_gsheets_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
-                output_payload_gsheets_dict["Col to PZBIAS with TFT's ON (# shorts)"] = test_cont_col_to_pzbias_tfts_on_out[0]
-
+                output_payload_gsheets_dict, out_string_test = test_cap_tft_array_1t(ser, inst, psu, path, dut_name_input,
+                                                                                     dut_stage_input, array_stage_text)
+                out_string += out_string_test
             elif (special_test_state == 2):
-                cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
-                cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
-                cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
-                cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
-                cont_col_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
-                cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
-
-                out_string += cont_row_to_column[1] + "\n"
-                out_string += cont_row_to_pzbias[1] + "\n"
-                out_string += cont_row_to_shield[1] + "\n"
-                out_string += cont_col_to_pzbias[1] + "\n"
-                out_string += cont_col_to_shield[1] + "\n"
-                out_string += cont_shield_to_pzbias[1]
-
-                output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
-                output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
-                output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
-                output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
-                output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
-                output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
+                output_payload_gsheets_dict, out_string_test, has_shorts = test_cont_array_1t(ser, inst, psu, path, dut_name_full)
+                out_string += out_string_test
             else:
-                # these are tuples of (num shorts, output string)
-                cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
-                cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
-                cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
-                cont_col_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_PZBIAS")
-                cont_col_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_COL_TO_SHIELD")
-                cont_shield_to_pzbias = test_cont_node(ser, inst, path, dut_name_full, "CONT_SHIELD_TO_PZBIAS")
+                output_payload_gsheets_cont_dict, out_string_cont_test, has_shorts = test_cont_array_1t(ser, inst, psu, path, dut_name_full)
+                out_string += out_string_cont_test
 
-                out_string += cont_row_to_column[1] + "\n"
-                out_string += cont_row_to_pzbias[1] + "\n"
-                out_string += cont_row_to_shield[1] + "\n"
-                out_string += cont_col_to_pzbias[1] + "\n"
-                out_string += cont_col_to_shield[1] + "\n"
-                out_string += cont_shield_to_pzbias[1]
-
-                output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
-                output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
-                output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
-                output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
-                output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
-                output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
-
-                hasShorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0 or cont_shield_to_pzbias[0]=="FAIL"
                 response = ""
-                if hasShorts:
+                if has_shorts:
                     print("This array doesn't have pants... it has shorts!")
                     valid_responses = {"test": "continue with cap check", '': "skip cap check"}
                     response = query_valid_response(valid_responses)
@@ -313,23 +260,12 @@ def main():
                     else:
                         response = ""
                 if (response.lower() == "test"):
-                    print("Running cap and TFT continuity tests...")
-                    valid_responses = {'': "run cap test with default 1nF range", 1: "run cap test with 10nF range"}
-                    test_selection_raw = query_valid_response(valid_responses)
-                    meas_range_input = '1e-9'
-                    if (test_selection_raw == "1"):
-                        meas_range_input = '1e-8'
-                        print("Running cap test with new 10nF range...\n")
-                    else:
-                        meas_range_input = '1e-9'
-                        print("Running cap test with default 1nF range...\n")
-                    test_cap_out = test_cap(ser, inst, path, dut_name_input, dut_stage_input,
-                                            "CAP_COL_TO_PZBIAS", array_stage_text, meas_range_input)
-                    test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_full)
-                    out_string += "\n" + test_cap_out[1]
-                    out_string += test_cont_col_to_pzbias_tfts_on_out[1]
-                    output_payload_gsheets_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
-                    output_payload_gsheets_dict["Col to PZBIAS with TFT's ON (# shorts)"] = test_cont_col_to_pzbias_tfts_on_out[0]
+                    output_payload_gsheets_captft_dict, out_string_test = test_cap_tft_array_1t(ser, inst, psu, path, dut_name_input,
+                                                                                         dut_stage_input, array_stage_text)
+                    output_payload_gsheets_dict = output_payload_gsheets_cont_dict | output_payload_gsheets_captft_dict
+                    out_string += out_string_test
+                else:
+                    output_payload_gsheets_dict = output_payload_gsheets_cont_dict
 
         # 3T array testing
         elif (array_tft_type == 3):
