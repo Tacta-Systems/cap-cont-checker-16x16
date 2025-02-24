@@ -692,7 +692,7 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
     out_text = ""
     inst.query('meas:res?')
     time.sleep(SERIAL_DELAY_TIME)
-    out_text += "Sensor " + dim1_name + " to " + dim2_name + " Continuity Detection Running..."
+    out_text += "Sensor " + test_name + " Detection Running..."
     print(out_text)
     out_text += "\n"
 
@@ -719,7 +719,7 @@ def test_cont_two_dim(ser, inst, path, dut_name, test_id, start_dim1=0, start_di
     serial_write_with_delay(ser, b'Z')                                          # set all mux enables + mux channels to OFF
     out_array = np.delete(out_array, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name + "_" + test_name.lower() + "_alt.csv", out_array, delimiter=",", fmt="%s")
-    num_shorts_text = "There were " + str(num_shorts) + " " + dim1_name + "/" + dim2_name + " short(s)"
+    num_shorts_text = test_name + " yielded " + str(num_shorts) + " short(s)"
     print(num_shorts_text)
     out_text += num_shorts_text + "\n"
     out_array = np.delete(out_array, (0), axis=1)
@@ -823,7 +823,7 @@ def test_cont_node(ser, inst, path, dut_name, test_id, res_threshold=RES_SHORT_T
         print(out_text)
         return (-1, out_text)
     datetime_now = dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    out_text = "Sensor " + test_name + " Continuity Detection Running..."
+    out_text = "Sensor " + test_name + " Detection Running..."
     out_text += "\n"
     val = 0
 
@@ -839,9 +839,9 @@ def test_cont_node(ser, inst, path, dut_name, test_id, res_threshold=RES_SHORT_T
         file.close()
     serial_write_with_delay(ser, b'Z')                               # set rst switches to high-Z and disable muxes
     if (val > res_threshold):
-        out_text += "\n" + test_name + " does not have shorts\n"
+        out_text += "\n" + test_name + " is not shorted\n"
     else:
-        out_text += "\n" + test_name + " has shorts\n"
+        out_text += "\n" + test_name + " is shorted\n"
     print(out_text)
     return (val, out_text)
 
@@ -1092,8 +1092,9 @@ Returns: a tuple with the following:
 def test_cap_tft_array_1t(ser, inst, psu, path, dut_name_raw, dut_stage_raw, dut_type,
                           using_usb_psu_in=USING_USB_PSU):
     global PSU_IS_ON_NOW
-    dut_name_full = dut_name_raw + dut_stage_raw
-    print("Running cap and TFT continuity tests...")
+    dut_name_full = dut_name_raw + "_" + dut_stage_raw
+    print("Running cap and TFT ON continuity tests...")
+    print("Tests starting at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
     if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
         set_psu_on(psu)
     valid_responses = {'': "run cap test with default 1nF range", 1: "run cap test with 10nF range"}
@@ -1109,7 +1110,7 @@ def test_cap_tft_array_1t(ser, inst, psu, path, dut_name_raw, dut_stage_raw, dut
                             "CAP_COL_TO_PZBIAS", dut_type, meas_range_input)
     test_cont_col_to_pzbias_tfts_on_out = test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name_full)
 
-    out_string = "\n" + test_cap_out[1]
+    out_string = test_cap_out[1]
     out_string += test_cont_col_to_pzbias_tfts_on_out[1]
     output_payload_gsheets_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
     output_payload_gsheets_dict["Col to PZBIAS with TFT's ON (# shorts)"] = test_cont_col_to_pzbias_tfts_on_out[0]
@@ -1136,6 +1137,7 @@ def test_cont_array_1t(ser, inst, psu, path, dut_name_full, using_usb_psu_in=USI
     global PSU_IS_ON_NOW
     if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
         set_psu_on(psu)
+    print("\nTests starting at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
     cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
     cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
     cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
@@ -1180,6 +1182,7 @@ def test_cont_array_3t(ser, inst, psu, path, dut_name_full, using_usb_psu_in=USI
     global PSU_IS_ON_NOW
     if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
         set_psu_on(psu)
+    print("\nTests starting at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
     cont_row_to_column    = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
     cont_row_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
     cont_row_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")

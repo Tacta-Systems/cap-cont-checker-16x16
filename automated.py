@@ -229,12 +229,12 @@ def main():
             test_selection_raw = query_valid_response(valid_responses)
             if (test_selection_raw == "1"):
                 special_test_state = 1
-                print("Running only cap and TFT ON tests...\n")
+                print("Running only cap and TFT ON tests...")
             elif (test_selection_raw == "2"):
                 special_test_state = 2
-                print("Running only continuity tests...\n")
+                print("Running only continuity tests...")
             else:
-                print("Running all tests...\n")
+                print("Running all tests...")
 
             if (special_test_state == 1): # only run capacitance and TFT ON tests
                 output_payload_gsheets_dict, out_string_test = test_cap_tft_array_1t(ser, inst, psu, path, dut_name_input,
@@ -263,7 +263,7 @@ def main():
                     output_payload_gsheets_captft_dict, out_string_test = test_cap_tft_array_1t(ser, inst, psu, path, dut_name_input,
                                                                                          dut_stage_input, array_stage_text)
                     output_payload_gsheets_dict = output_payload_gsheets_cont_dict | output_payload_gsheets_captft_dict
-                    out_string += out_string_test
+                    out_string += "\n" + out_string_test
                 else:
                     output_payload_gsheets_dict = output_payload_gsheets_cont_dict
 
@@ -309,12 +309,12 @@ def main():
         filenames = list(sorted(filenames, key=get_timestamp_truncated))
 
         if (len(filenames) <= 1):
-            print("No files to compare. Exiting...")
+            print("\nNo files to compare. Exiting...")
             sys.exit(0)
 
         compare_filename = ""
         file_cmp_index = -1
-        print("Comparing output summary files...")
+        print("\nComparing output summary files...")
         valid_responses = {'Y': "compare data with previous test", 'M': "manually compare against a file for this array", '': "exit program"}
         cmd = query_valid_response(valid_responses)
 
