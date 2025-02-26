@@ -592,8 +592,8 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
     with open(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + ".csv", 'w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Row Index", "Column Index", "Cap Off Measurement (F)", "Cap On Measurement (F)", "Calibrated Measurement (F)"])
-        inst_write_with_delay(inst, 'sens:cap:rang ' + meas_range)
-        inst_query_with_delay(inst, 'meas:cap?')
+        inst_write_with_delay(inst, 'sens:cap:rang ' + meas_range, DMM_DELAY_TIME_CAP)
+        inst_query_with_delay(inst, 'meas:cap?', DMM_DELAY_TIME_CAP)
         print("Sensor " + test_name + " Check Running...")
         print_progress_bar(0, 16, suffix = "Row 0/16", length = 16)
         out_array_delta = np.zeros((18, 17), dtype='U64')          # create string-typed numpy array
@@ -611,25 +611,25 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
 
         for row in range(start_row, end_row):
             for col in range(start_col, end_col):
-                serial_write_with_delay(ser, b'Z')                         # sets all mux switches to high-Z mode
-                serial_write_with_delay(ser, CAP_FN_DICT[test_name])       # pre-sets the secondary muxes to the right state for cap measurement
-                serial_write_with_delay(ser, b'R')                         # sets primary mux to row write mode
-                serial_write_with_delay(ser, bytes(hex(row)[2:], 'utf-8')) # sets row address
-                serial_write_with_delay(ser, b'L')                         # sets primary mux to column write mode
-                serial_write_with_delay(ser, bytes(hex(col)[2:], 'utf-8')) # sets column address
-                serial_write_with_delay(ser, b'I')                         # sets primary row mux to "binary counter disable mode", which sets all TFT's off (to -8V)
+                serial_write_with_delay(ser, b'Z', SERIAL_DELAY_TIME_CAP)                         # sets all mux switches to high-Z mode
+                serial_write_with_delay(ser, CAP_FN_DICT[test_name], SERIAL_DELAY_TIME_CAP)       # pre-sets the secondary muxes to the right state for cap measurement
+                serial_write_with_delay(ser, b'R', SERIAL_DELAY_TIME_CAP)                         # sets primary mux to row write mode
+                serial_write_with_delay(ser, bytes(hex(row)[2:], 'utf-8'), SERIAL_DELAY_TIME_CAP) # sets row address
+                serial_write_with_delay(ser, b'L', SERIAL_DELAY_TIME_CAP)                         # sets primary mux to column write mode
+                serial_write_with_delay(ser, bytes(hex(col)[2:], 'utf-8'), SERIAL_DELAY_TIME_CAP) # sets column address
+                serial_write_with_delay(ser, b'I', SERIAL_DELAY_TIME_CAP)                         # sets primary row mux to "binary counter disable mode", which sets all TFT's off (to -8V)
 
-                tft_off_meas = float(inst_query_with_delay(inst, 'meas:cap?'))
+                tft_off_meas = float(inst_query_with_delay(inst, 'meas:cap?', DMM_DELAY_TIME_CAP))
 
-                serial_write_with_delay(ser, b'Z')                         # sets all mux switches to high-Z mode
-                serial_write_with_delay(ser, CAP_FN_DICT[test_name])       # pre-sets the secondary muxes to the right state for cap measurement
-                serial_write_with_delay(ser, b'R')                         # sets primary mux to row write mode
-                serial_write_with_delay(ser, bytes(hex(row)[2:], 'utf-8')) # sets row address
-                serial_write_with_delay(ser, b'L')                         # sets primary mux to column write mode
-                serial_write_with_delay(ser, bytes(hex(col)[2:], 'utf-8')) # sets column address
-                serial_write_with_delay(ser, b'P')                         # sets primary row mux to capacitance check mode
+                serial_write_with_delay(ser, b'Z', SERIAL_DELAY_TIME_CAP)                         # sets all mux switches to high-Z mode
+                serial_write_with_delay(ser, CAP_FN_DICT[test_name], SERIAL_DELAY_TIME_CAP)       # pre-sets the secondary muxes to the right state for cap measurement
+                serial_write_with_delay(ser, b'R', SERIAL_DELAY_TIME_CAP)                         # sets primary mux to row write mode
+                serial_write_with_delay(ser, bytes(hex(row)[2:], 'utf-8'), SERIAL_DELAY_TIME_CAP) # sets row address
+                serial_write_with_delay(ser, b'L', SERIAL_DELAY_TIME_CAP)                         # sets primary mux to column write mode
+                serial_write_with_delay(ser, bytes(hex(col)[2:], 'utf-8'), SERIAL_DELAY_TIME_CAP) # sets column address
+                serial_write_with_delay(ser, b'P', SERIAL_DELAY_TIME_CAP)                         # sets primary row mux to capacitance check mode
 
-                tft_on_meas = float(inst_query_with_delay(inst, 'meas:cap?'))
+                tft_on_meas = float(inst_query_with_delay(inst, 'meas:cap?', DMM_DELAY_TIME_CAP))
                 tft_cal_meas = tft_on_meas - tft_off_meas
                 if (tft_cal_meas*1e12 < cap_bound_vals[0]):
                     num_below_threshold += 1
@@ -641,7 +641,7 @@ def test_cap(ser, inst, path, dut_name_raw, dut_stage_raw, test_mode_in, dut_typ
                 out_array_on[(16-row)+1][col+1] = tft_on_meas*1e12
                 writer.writerow([str(row+1), str(col+1), tft_off_meas, tft_on_meas, tft_cal_meas]) # appends to CSV with 1 index
             print_progress_bar(row+1, 16, suffix = "Row " + str(row+1) + "/16", length = 16)
-    serial_write_with_delay(ser, b'Z')
+    serial_write_with_delay(ser, b'Z', SERIAL_DELAY_TIME_CAP)
     out_array_delta = np.delete(out_array_delta, (0), axis=0)
     np.savetxt(path + datetime_now + "_" + dut_name_full + "_" + test_name.lower() + "_alt_delta.csv", out_array_delta, delimiter=",", fmt="%s")
     out_array_on = np.delete(out_array_on, (0), axis=0)

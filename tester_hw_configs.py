@@ -50,8 +50,10 @@ SERIAL_PORT_DEFAULT = "COM3"
 
 # default amount of time to wait between commands for each instrument
 PSU_DELAY_TIME = 3 # seconds, PSU delay to stabilize output voltage especially when switching on/off
-DMM_DELAY_TIME = 0 # seconds, DMM delay not necessary
+DMM_DELAY_TIME = 0 # seconds, DMM delay not necessary for continuity checks
 SERIAL_DELAY_TIME = 0.02 # seconds, any faster and the GPIB interface cannot keep up
+DMM_DELAY_TIME_CAP = 0 # seconds, for experimenting with cap check specifically
+SERIAL_DELAY_TIME_CAP = 0.02 # tester cannot synchronize GPIB/serial faster than 0.02sec delay
 
 # default multimeter ranges for each class of measurement
 RES_RANGE_DEFAULT = '100E6'  # ohm
