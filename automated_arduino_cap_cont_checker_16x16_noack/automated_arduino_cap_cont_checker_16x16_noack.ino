@@ -115,8 +115,8 @@ void loop() {
   }
   else if (cmd == 'P') { // capacitance checker mode
     state = 'P';
-    digitalWrite(N_ROW_MODE_SEL, LOW);
     digitalWrite(N_ROW_DEC_EN, LOW);
+    digitalWrite(N_ROW_MODE_SEL, LOW);
     digitalWrite(ROW_MUX_EN, LOW);
     digitalWrite(COL_MUX_EN, HIGH);
     digitalWrite(RST_MUX_EN, LOW);

@@ -63,6 +63,13 @@ from pygame import mixer
 # -1: OFF, 0: Undetermined, 1: ON
 PSU_IS_ON_NOW = 0
 
+# override default delay values in tester_hw_configs
+# default amount of time to wait between commands for each instrument
+PSU_DELAY_TIME = 1 # seconds, PSU delay to stabilize output voltage especially when switching on/off
+DMM_DELAY_TIME = 0 # seconds, DMM delay not necessary for continuity checks
+SERIAL_DELAY_TIME = 0.001 # seconds, any faster and the GPIB interface cannot keep up
+DMM_DELAY_TIME_CAP = 0 # seconds, for experimenting with cap check specifically
+SERIAL_DELAY_TIME_CAP = 0.001 # tester cannot synchronize GPIB/serial faster than 0.02sec delay
 '''
 Dictionary used to store results from tests
 Results are uploaded to Google Sheets in this order
@@ -180,6 +187,7 @@ class Serial_Dummy:
         self.rtscts = None
         self.dsrdtr = None
         self.writeTimeout = 0
+        print("FOR DEBUGGING USE ONLY, VIRTUAL SERIAL DEVICE CREATED")
     def __str__(self):
         return self.port
     def open(self):
@@ -188,6 +196,7 @@ class Serial_Dummy:
         return True
     def close(self):
         self.port = ""
+        print("FOR DEBUGGING USE ONLY, VIRTUAL SERIAL DEVICE CLOSED")
         return True
 
 class VISA_Dummy:
@@ -197,6 +206,7 @@ class VISA_Dummy:
         self.res_default = 0.01
         self.cap_default = 1e-9
         self.visa_id = visa_id_in
+        print("FOR DEBUGGING USE ONLY, VIRTUAL VISA DEVICE CREATED")
     def __str__(self):
         return self.visa_id
     def open(self, port_in):
@@ -214,6 +224,7 @@ class VISA_Dummy:
         return True
     def close(self):
         self.visa_id = ""
+        print("FOR DEBUGGING USE ONLY, VIRTUAL SERIAL DEVICE CLOSED")
         return True
 
 # Init and set functions for test equipment
