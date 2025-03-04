@@ -1705,7 +1705,7 @@ def show_closeable_img(img_name, img_file_format=".png", path_to_img=WAFER_GRAPH
         print("ERROR DISPLAYING IMAGE: " + str(e))
         return False
     fig, axes = plt.subplots(1, 1, figsize=(IMAGE_FIGURE_SIZE_X, IMAGE_FIGURE_SIZE_Y))
-    plt.get_current_fig_manager().set_window_title(img_name + ' (hit any key to dismiss)')
+    plt.get_current_fig_manager().set_window_title(img_name + ' (click to dismiss)')
     plt.imshow(img)
     plt.axis('off')
     plt.tight_layout()
