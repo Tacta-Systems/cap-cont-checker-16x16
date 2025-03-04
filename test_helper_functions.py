@@ -46,6 +46,8 @@ import time
 import datetime as dt
 import numpy as np
 
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -54,6 +56,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from httplib2 import Http
 from tester_hw_configs import *
+from tester_hw_test_classes import *
 
 # silence the PyGame import startup message
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
@@ -196,8 +199,11 @@ Parameters:
 Returns:
     PySerial object (if properly initialized), null object if not initialized
 '''
-def init_serial(com_port=""):
-    ser = serial.Serial()
+def init_serial(com_port="", debug_mode_in=False):
+    if (not debug_mode_in):
+        ser = serial.Serial()
+    else:
+        ser = Serial_Dummy(com_port)
     ser.port = com_port
     ser.baudrate = 115200
     ser.bytesize = serial.EIGHTBITS    #number of bits per bytes
@@ -242,9 +248,13 @@ Returns:
 TODO: implement equipment type check that quits if this address is not actually the right equipment
 NOTE: remember to run 'dmm.close()' when done with the DMM
 '''
-def init_multimeter(rm, dmm_id=DMM_SERIAL_STRING_DEFAULT, res_range=RES_RANGE_DEFAULT, cap_range=CAP_RANGE_DEFAULT):
+def init_multimeter(rm, dmm_id=DMM_SERIAL_STRING_DEFAULT, res_range=RES_RANGE_DEFAULT, cap_range=CAP_RANGE_DEFAULT,
+                    debug_mode_in=False):
     try:
-        dmm = rm.open_resource(dmm_id)
+        if (not debug_mode_in):
+            dmm = rm.open_resource(dmm_id)
+        else:
+            dmm = VISA_Dummy(dmm_id)
         print("Connected to VISA multimeter!")
     except Exception as e:
         print("ERROR: couldn't connect to VISA multimeter...")
@@ -271,11 +281,14 @@ Returns:
 TODO: implement equipment type check that quits if this address is not actually the right equipment
 NOTE: remember to run 'psu.close()' when done with the PSU
 '''
-def init_psu(rm, psu_id=PSU_SERIAL_STRING_DEFAULT):
+def init_psu(rm, psu_id=PSU_SERIAL_STRING_DEFAULT, debug_mode_in=False):
     global PSU_IS_ON_NOW
     PSU_IS_ON_NOW = 0
     try:
-        psu = rm.open_resource(psu_id)
+        if (not debug_mode_in):
+            psu = rm.open_resource(psu_id)
+        else:
+            psu = VISA_Dummy(psu_id)
         print("Connected to VISA PSU!")
         # Have pyvisa handle line termination
         psu.read_termination = '\n'
@@ -436,7 +449,7 @@ Returns: A tuple with the following:
 '''
 def init_equipment_with_config(rm, tester_hw_config_list_in=TESTER_HW_CONFIG_LIST,
                                array_connection_list_in=ARRAY_CONNECTION_LIST,
-                               using_usb_psu_in=USING_USB_PSU):
+                               using_usb_psu_in=USING_USB_PSU, debug_mode=False):
     ser = None
     inst = None
     psu = None
@@ -445,10 +458,10 @@ def init_equipment_with_config(rm, tester_hw_config_list_in=TESTER_HW_CONFIG_LIS
         # in tester_hw_configs.py
         config_default = tester_hw_config_list_in[0]
         config_name = config_default["tester_name"]
-        ser = init_helper(init_serial(config_default["serial_port"]), False)
-        inst = init_helper(init_multimeter(rm, config_default["dmm_serial_string"]), False)
+        ser = init_helper(init_serial(config_default["serial_port"], debug_mode_in=debug_mode), False)
+        inst = init_helper(init_multimeter(rm, config_default["dmm_serial_string"], debug_mode_in=debug_mode), False)
         if (using_usb_psu_in):
-            psu = init_helper(init_psu(rm, config_default["psu_serial_string"]))
+            psu = init_helper(init_psu(rm, config_default["psu_serial_string"], debug_mode_in=debug_mode), False)
 
         # If default configuration successfully connects,
         # - selecting 'enter' (default) will use that configuration
@@ -1382,6 +1395,25 @@ def cmp_two_files(path, filename1, filename2):
         else:
             print("ERROR: File lengths are mismatched")
 
+'''
+Returns a list of all files in a directory
+Parameters:
+    directory_path : String path to look in
+Returns:
+    List of all filenames in that directory
+'''
+def list_files_in_directory(directory_path):
+    try:
+        file_name_list = []
+        for filename in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, filename)
+            if (os.path.isfile(file_path)):
+                file_name_list.append(filename)
+        return file_name_list
+    except Exception as e:
+        print("ERROR READING FILES: " + str(e))
+        return []
+
 # Helper functions for Google Sheets integration
 '''
 Returns a Python OAuth credential object that can be used to access Google Apps services,
@@ -1448,51 +1480,55 @@ Returns:
     String with '1' for 1T array or '3' for 3T array, or NoneType object if not found/error
 '''
 def get_array_transistor_type(creds, array_id, dieid_cols='A', dieid_tfts='R',
-                              spreadsheet_id=SPREADSHEET_ID, id_sheet_name=ID_SHEET_NAME):
-    try:
-        service = build("sheets", "v4", credentials=creds)
-        sheet = service.spreadsheets()
-        # Define the range (A1 notation) to append the data at the end of the sheet
-        range_name_dieid = f'{id_sheet_name}!' + dieid_cols + ':' + dieid_cols
-        range_name_tfttype = f'{id_sheet_name}!' + dieid_tfts + ':' + dieid_tfts
-        result_dieid = (
-            sheet.values()
-            .get(spreadsheetId=spreadsheet_id, range=range_name_dieid)
-            .execute()
-        )
-        result_tfttype = (
-            sheet.values()
-            .get(spreadsheetId=spreadsheet_id, range=range_name_tfttype)
-            .execute()
-        )
-        values_dieid = result_dieid.get("values", [])
-        values_tfttype = result_tfttype.get("values", [])
+                              spreadsheet_id=SPREADSHEET_ID, id_sheet_name=ID_SHEET_NAME, debug_mode_in=False):
+    if debug_mode_in:
+        print("DEBUG MODE: Return 3T for testing purposes")
+        return 3
+    else:
+        try:
+            service = build("sheets", "v4", credentials=creds)
+            sheet = service.spreadsheets()
+            # Define the range (A1 notation) to append the data at the end of the sheet
+            range_name_dieid = f'{id_sheet_name}!' + dieid_cols + ':' + dieid_cols
+            range_name_tfttype = f'{id_sheet_name}!' + dieid_tfts + ':' + dieid_tfts
+            result_dieid = (
+                sheet.values()
+                .get(spreadsheetId=spreadsheet_id, range=range_name_dieid)
+                .execute()
+            )
+            result_tfttype = (
+                sheet.values()
+                .get(spreadsheetId=spreadsheet_id, range=range_name_tfttype)
+                .execute()
+            )
+            values_dieid = result_dieid.get("values", [])
+            values_tfttype = result_tfttype.get("values", [])
 
-        found_array = False
-        i = 0
-        tft_type="INVALID"
-        for i in range(len(values_dieid)):
-            if (len(values_dieid[i]) > 0):
-                if (values_dieid[i][0].rstrip("_").upper().split('_')[0] == array_id.upper().split('_')[0]):
-                # print("Found at index " + str(i))
-                    found_array = True
-                    tft_type = values_tfttype[i][0]
-                    break
-        if (found_array):
-            if (tft_type.split('-')[0] == 'FS'):
-                val_raw = tft_type.split('-')[1][0]
-                if (is_valid_int(val_raw)):
-                    return int(val_raw)
+            found_array = False
+            i = 0
+            tft_type="INVALID"
+            for i in range(len(values_dieid)):
+                if (len(values_dieid[i]) > 0):
+                    if (values_dieid[i][0].rstrip("_").upper().split('_')[0] == array_id.upper().split('_')[0]):
+                    # print("Found at index " + str(i))
+                        found_array = True
+                        tft_type = values_tfttype[i][0]
+                        break
+            if (found_array):
+                if (tft_type.split('-')[0] == 'FS'):
+                    val_raw = tft_type.split('-')[1][0]
+                    if (is_valid_int(val_raw)):
+                        return int(val_raw)
+                else:
+                    val_raw = tft_type.split('-')[0][0]
+                    if (is_valid_int(val_raw)):
+                        return int(val_raw)
             else:
-                val_raw = tft_type.split('-')[0][0]
-                if (is_valid_int(val_raw)):
-                    return int(val_raw)
-        else:
-            print("Array not found in inventory!")
+                print("Array not found in inventory!")
+                return None
+        except HttpError as err:
+            print(err)
             return None
-    except HttpError as err:
-        print(err)
-        return None
 
 '''
 Function that does a wildcard search in the inventory for a substring; in most cases this can be the
@@ -1539,6 +1575,60 @@ def get_array_full_name(creds, search_string, dieid_cols='A', flexid_cols='AK',
             print("Duplicate matches found!")
             return None
         return full_array_id.rstrip("_")
+    except HttpError as err:
+        print(err)
+        return None
+
+'''
+Function that queries the Google Spreadsheets inventory for the mask type (BT1/BT2/BT3) given the wafer ID
+The spreadsheet contains multiple entries with the wafer ID, due to each wafer having multiple arrays,
+so this one picks the first entry found.
+Parameters:
+    creds:      Initialized Google Apps credential, with token.json initialized. Refer to 'main()' in
+                'google_sheets_example.py' for initialization example
+    search_string : The query, a string containing the wafer ID
+    wafer_col     : The column of the spreadsheet with all of the wafer names
+    mask_col      : The column of the spreadsheet with all of the mask names (i.e. BT1/BT2/BT3)
+    spreadsheet_id: The Google Sheets spreadsheet ID, extracted from the URL (docs.google.com/spreadsheets/d/***)
+    id_sheet_name : The name of the sheet to search in for array_id, by default set by global variable
+Returns:
+    Int with BT[x] status (i.e. 1, 2, 3), or NoneType object 
+'''
+def get_wafer_build_type(creds, search_string, wafer_col='L', mask_col='M',
+                         spreadsheet_id=SPREADSHEET_ID, id_sheet_name=ID_SHEET_NAME, debug_mode_in=False):
+    if debug_mode_in:
+        print("DEBUG MODE: Return 3 (int) for BT3 for testing purposes")
+        return 3
+    try:
+        service = build("sheets", "v4", credentials=creds)
+        sheet = service.spreadsheets()
+        wafer_name_ids = f'{id_sheet_name}!' + wafer_col + ':' + wafer_col
+        result_waferids = (
+            sheet.values()
+            .get(spreadsheetId=spreadsheet_id, range=wafer_name_ids)
+            .execute()
+        )
+        wafer_is_found = False
+        wafer_gsheets_index = -1
+        values_waferids = result_waferids.get("values", [])
+        for i in range(len(values_waferids)):
+            if (len(values_waferids[i]) > 0):
+                if (values_waferids[i][0] == search_string):
+                    wafer_is_found = True
+                    wafer_gsheets_index = i
+                    break
+        if (wafer_is_found):
+            wafer_mask_ids = f'{id_sheet_name}!' + mask_col + ':' + mask_col
+            result_maskids = (
+                sheet.values()
+                .get(spreadsheetId=spreadsheet_id, range=wafer_mask_ids)
+                .execute()
+            )
+            values_maskids = result_maskids.get("values", [])
+            return int(values_maskids[wafer_gsheets_index][0][2:])
+        else:
+            print("Wafer not found in inventory!")
+            return None
     except HttpError as err:
         print(err)
         return None
@@ -1605,3 +1695,21 @@ Returns:
 '''
 def check_cap_results(num_shorts, threshold=MIN_PASS_CAP_COUNT):
     return "PASS" if num_shorts >= threshold else "FAIL"
+
+# Graphics drawing tools
+def show_closeable_img(img_name, img_file_format=".png", path_to_img=WAFER_GRAPHICS_PATH,
+                       x_size=IMAGE_FIGURE_SIZE_X, y_size=IMAGE_FIGURE_SIZE_Y):
+    try:
+        img = mpimg.imread(path_to_img + "\\" + img_name + img_file_format)
+    except FileNotFoundError as e:
+        print("ERROR DISPLAYING IMAGE: " + str(e))
+        return False
+    fig, axes = plt.subplots(1, 1, figsize=(IMAGE_FIGURE_SIZE_X, IMAGE_FIGURE_SIZE_Y))
+    plt.get_current_fig_manager().set_window_title(img_name + ' (hit any key to dismiss)')
+    plt.imshow(img)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.waitforbuttonpress(0)
+    plt.close(fig)
+    print("Closing image " + img_name + "...")
+    return True

@@ -102,6 +102,14 @@ TOKEN_FILE_DEFAULT = "token.json"
 CRED_FILE_DEFAULT = "credentials.json"
 
 # ------------------------------------------
+# WAFER IMAGE PREVIEW SETTINGS
+# ------------------------------------------
+
+WAFER_GRAPHICS_PATH = "G:\\Shared drives\\Sensing\\Testing\\Wafers\\graphics"
+IMAGE_FIGURE_SIZE_X = 3.8 # this is a relative size that Matplotlib will use to determine how big to draw the image preview window
+IMAGE_FIGURE_SIZE_Y = 3 # this is a relative size that Matplotlib will use to determine how big to draw the image preview window
+
+# ------------------------------------------
 # LOOPBACK SOUND CONFIGURATION (beepy boi)
 # ------------------------------------------
 
@@ -125,6 +133,19 @@ ARRAY_ASSY_TYPES = {
     2: "Sensor Arrays",
     3: "Sensor Modules"
 }
+
+# ------------------------------------------
+# WAFER CONFIGURATION
+# ------------------------------------------
+
+# Wafer build type must be string
+WAFER_BUILD_TYPES = {"1": "test as BT1 wafer",
+                     "2": "test as BT2 wafer",
+                     "3": "test as BT3 wafer"}
+WAFER_TEST_CONFIG_PATH = "G:\\Shared drives\\Sensing\\Testing\\Wafers\\test_configs"
+DEFAULT_WAFER_TEST_CONFIG_FILENAME = "default_test_all.txt"
+DIE_ADDRESSES = ["F3", "F4", "E2", "E3", "E4", "E5", "D1", "D2", "D3", "D4", "D5", "D6",
+                 "C1", "C2", "C3", "C4", "C5", "C6", "B2", "B3", "B4", "B5", "A3", "A4"]
 
 # ------------------------------------------
 # ARDUINO SERIAL COMMAND CONFIGURATION

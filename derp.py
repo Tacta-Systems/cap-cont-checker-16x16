@@ -1,3 +1,18 @@
+# test filesystem test config loading
+import os
+
+def list_files_in_directory(directory_path):
+    try:
+        file_name_list = []
+        for filename in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, filename)
+            if (os.path.isfile(file_path)):
+                file_name_list.append(filename)
+        return file_name_list
+    except Exception as e:
+        print("ERROR READING FILES: " + str(e))
+        return []
+
 class Serial_Dummy:
     def __init__(self, port_in=""):
         self.port = port_in

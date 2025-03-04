@@ -26,17 +26,18 @@ from test_helper_functions import *
 
 def main():
     try:
+        DEBUG_MODE = False
         datetime_now = dt.datetime.now()
         rm = pyvisa.ResourceManager()
         ser = None
         inst = None
         psu = None
         tester_serial_number = None
-        ser, inst, psu, tester_serial_number = init_equipment_with_config(rm)
+        ser, inst, psu, tester_serial_number = init_equipment_with_config(rm, debug_mode_in=DEBUG_MODE)
         print("\nSetup Instructions:\n" +
-            "- Plug sensor into connector on primary mux board\n" +
             "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
             "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
+            "- Connect power supply +18V, GND, -18V to tester board probe hooks\n" +
             "- Ensure power supply is ON\n")
 
         # Query user for device ID (or a substring)
