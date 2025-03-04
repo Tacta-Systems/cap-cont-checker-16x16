@@ -104,7 +104,7 @@ CRED_FILE_DEFAULT = "credentials.json"
 # ------------------------------------------
 # WAFER IMAGE PREVIEW SETTINGS
 # ------------------------------------------
-
+# graphics are also in the repository in 'graphics' directory
 WAFER_GRAPHICS_PATH = "G:\\Shared drives\\Sensing\\Testing\\Wafers\\graphics"
 IMAGE_FIGURE_SIZE_X = 3.8 # this is a relative size that Matplotlib will use to determine how big to draw the image preview window
 IMAGE_FIGURE_SIZE_Y = 3 # this is a relative size that Matplotlib will use to determine how big to draw the image preview window
