@@ -936,6 +936,7 @@ def test_cont_col_to_pzbias_tfts_on(ser, inst, path, dut_name, start_row=0, end_
                     out_text += "X"
             print("")
             out_text += "\n"
+        out_text += "\n"
     print("")
     return(num_shorts, out_text)
 
