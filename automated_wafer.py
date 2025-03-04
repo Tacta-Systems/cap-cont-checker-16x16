@@ -110,12 +110,7 @@ def main():
         wafer_stage_text = ARRAY_ASSY_TYPES[wafer_stage_index]
         path_base = PATH_BASE + wafer_stage_text.title() + "\\"
         '''
-        # TEST USE ONLY -- BEGIN
-        #creds = get_creds()
-        #wafer_name_input = "E2503-002-003"
-        #config_file_selected = "derp_empty.txt"
-        # TEST USE ONLY -- END
-        
+
         print(wafer_name_input)
         list_of_test_coords = []
         with open(WAFER_TEST_CONFIG_PATH + "\\" + config_file_selected) as file:
@@ -141,7 +136,7 @@ def main():
                     if (tft_type_override == ""):
                         pass
                     else:
-                        tft_type = tft_type_override
+                        tft_type = int(tft_type_override)
                 
                 path_base = PATH_BASE + wafer_stage_text.title() + "\\"
                 if (os.path.exists(path_base + dut_name)):
