@@ -26,14 +26,15 @@ from test_helper_functions import *
 
 def main():
     try:
-        DEBUG_MODE = False
+        SET_DEBUG_MODE = True
+        SET_LOOPBACK_SILENT = False
         datetime_now = dt.datetime.now()
         rm = pyvisa.ResourceManager()
         ser = None
         inst = None
         psu = None
         tester_serial_number = None
-        ser, inst, psu, tester_serial_number = init_equipment_with_config(rm, debug_mode_in=DEBUG_MODE)
+        ser, inst, psu, tester_serial_number = init_equipment_with_config(rm, debug_mode=SET_DEBUG_MODE)
         print("\nSetup Instructions:\n" +
             "- Connect multimeter (+) lead to secondary mux board ROW (+)/red wire\n" +
             "- Connect multimeter (-) lead to secondary mux board COL (+)/red wire\n" +
@@ -196,7 +197,7 @@ def main():
 
         if (array_stage_raw in [1, 2]): # Runs loopback check on bare backplanes and sensor arrays not bonded to flex
             print("Press 'q' to skip loopback check...")
-            (loop_one_res, loop_two_res) = test_loopback_resistance(ser, inst)
+            (loop_one_res, loop_two_res) = test_loopback_resistance(ser, inst, silent=SET_LOOPBACK_SILENT)
             out_string += "Loopback 1 resistance: " + str(loop_one_res) + " ohms" + "\n"
             out_string += "Loopback 2 resistance: " + str(loop_two_res) + " ohms" + "\n\n"
             print("")
@@ -263,7 +264,7 @@ def main():
                 if (response.lower() == "test"):
                     output_payload_gsheets_captft_dict, out_string_test = test_cap_tft_array_1t(ser, inst, psu, path, dut_name_input,
                                                                                          dut_stage_input, array_stage_text)
-                    output_payload_gsheets_dict = output_payload_gsheets_cont_dict | output_payload_gsheets_captft_dict
+                    output_payload_gsheets_dict = merge_dict_b_into_a(output_payload_gsheets_cont_dict, output_payload_gsheets_captft_dict)
                     out_string += "\n" + out_string_test
                 else:
                     output_payload_gsheets_dict = output_payload_gsheets_cont_dict

@@ -1089,6 +1089,9 @@ def test_cont_loopback_two(ser, inst):
     print(out_text)
     return(val, out_text)
 
+# Main tester functions that run all tests for 1T or 3T arrays
+# 1T has two routines, cap and continuity
+# 3T only has continuity check.
 '''
 Run capacitance and TFT tests for 1T arrays
 Will turn on the power supply if not already on, and turn it off when done.
@@ -1109,9 +1112,13 @@ Returns: a tuple with the following:
 def test_cap_tft_array_1t(ser, inst, psu, path, dut_name_raw, dut_stage_raw, dut_type,
                           using_usb_psu_in=USING_USB_PSU):
     global PSU_IS_ON_NOW
+    output_payload_dict = dict()
+    for field in OUT_COLUMN_FIELDS:
+        output_payload_dict[field]=None
+    start_time_str = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     dut_name_full = dut_name_raw + "_" + dut_stage_raw
     print("Running cap and TFT ON continuity tests...")
-    print("Tests starting at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
+    print("Tests starting at " + start_time_str + "\n")
     if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
         set_psu_on(psu)
     valid_responses = {'': "run cap test with default 1nF range", 1: "run cap test with 10nF range"}
@@ -1153,9 +1160,13 @@ Returns: a tuple with the following:
 '''
 def test_cont_array_1t(ser, inst, psu, path, dut_name_full, using_usb_psu_in=USING_USB_PSU):
     global PSU_IS_ON_NOW
+    output_payload_dict = dict()
+    for field in OUT_COLUMN_FIELDS:
+        output_payload_dict[field]=None
     if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
         set_psu_on(psu)
-    print("\nTests starting at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
+    start_time_str = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print("\nTests starting at " + start_time_str + "\n")
     cont_row_to_column = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
     cont_row_to_pzbias = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
     cont_row_to_shield = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
@@ -1198,9 +1209,13 @@ Returns: a tuple with the following:
 '''
 def test_cont_array_3t(ser, inst, psu, path, dut_name_full, using_usb_psu_in=USING_USB_PSU):
     global PSU_IS_ON_NOW
+    output_payload_dict = dict()
+    for field in OUT_COLUMN_FIELDS:
+        output_payload_dict[field]=None
     if (using_usb_psu_in and PSU_IS_ON_NOW != 1):
         set_psu_on(psu)
-    print("\nTests starting at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
+    start_time_str = dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print("\nTests starting at " + start_time_str + "\n")
     cont_row_to_column    = test_cont_two_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_COL")
     cont_row_to_pzbias    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_PZBIAS")
     cont_row_to_shield    = test_cont_one_dim(ser, inst, path, dut_name_full, "CONT_ROW_TO_SHIELD")
@@ -1700,6 +1715,27 @@ Returns:
 '''
 def check_cap_results(num_shorts, threshold=MIN_PASS_CAP_COUNT):
     return "PASS" if num_shorts >= threshold else "FAIL"
+
+'''
+Merges dictionary B into dictionary A, given both dictionaries have the same keys,
+and ignores empty keys (None or "")
+Intended for combining output dictionaries from multiple test routines
+(e.g. cont_1T and cap_1T) to output to Google Drive all at once.
+Parameters:
+    dict_a: The array to be merged into
+    dict_b: The array to merge into dict_a
+Returns:
+    dict_out: Merged dictionary, or None if both dictionaries' keys aren't exactly the same
+'''
+def merge_dict_b_into_a(dict_a, dict_b):
+    if dict_a.keys() != dict_b.keys():
+        print("ERROR: Dictionaries do not have matching keys...")
+        return None
+    dict_out = dict_a
+    for key in dict_out:
+        if (dict_b[key] is not None and dict_b[key] != ""):
+            dict_out[key] = dict_b[key]
+    return dict_out
 
 # Graphics drawing tools
 def show_closeable_img(img_name, img_file_format=".png", path_to_img=WAFER_GRAPHICS_PATH,

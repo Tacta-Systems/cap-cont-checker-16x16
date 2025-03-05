@@ -1,54 +1,49 @@
-# test filesystem test config loading
-import os
+from test_helper_functions import *
 
-def list_files_in_directory(directory_path):
-    try:
-        file_name_list = []
-        for filename in os.listdir(directory_path):
-            file_path = os.path.join(directory_path, filename)
-            if (os.path.isfile(file_path)):
-                file_name_list.append(filename)
-        return file_name_list
-    except Exception as e:
-        print("ERROR READING FILES: " + str(e))
-        return []
+def print_dict(dict_in):
+    for key in dict_in:
+        print(key + ": " + str(dict_in[key]))
 
-class Serial_Dummy:
-    def __init__(self, port_in=""):
-        self.port = port_in
-    def __str__(self):
-        return self.port
-    def open(self, port_in):
-        self.port = port_in
-        return self.port
-    def write(self, data):
-        return True
-    def close(self):
-        self.port = ""
-        return True
+'''
+Merges dictionary B into dictionary A, given both dictionaries have the same keys,
+and ignores empty keys (None or "")
+Intended for combining output dictionaries from multiple test routines
+(e.g. cont_1T and cap_1T) to output to Google Drive all at once.
+Parameters:
+    dict_a: The array to be merged into
+    dict_b: The array to merge into dict_a
+Returns:
+    dict_out: Merged dictionary, or None if both dictionaries' keys aren't exactly the same
+'''
+def merge_dict_b_into_a(dict_a, dict_b):
+    if dict_a.keys() != dict_b.keys():
+        print("ERROR: Dictionaries do not have matching keys...")
+        return None
+    dict_out = dict_a
+    for key in dict_out:
+        if (dict_b[key] is not None and dict_b[key] != ""):
+            dict_out[key] = dict_b[key]
+    return dict_out
 
-class VISA_Dummy:
-    def __init__(self, visa_id_in=""):
-        self.read_termination=""
-        self.config_val = ""
-        self.res_default = 0.01
-        self.cap_default = 1e-9
-        self.visa_id = visa_id_in
-    def __str__(self):
-        return self.visa_id
-    def open(self, port_in):
-        self.visa_id = port_in
-        return self.visa_id
-    def query(self, query_in):
-        if (query_in == "meas:res?"):
-            return self.res_default
-        elif (query_in == "meas:cap?"):
-            return self.cap_default
-        else:
-            return 0
-    def write(self, data):
-        self.config_val = data
-        return True
-    def close(self):
-        self.visa_id = ""
-        return True
+out_cont_dict = dict()
+out_cap_dict = dict()
+for key in OUT_COLUMN_FIELDS:
+    out_cont_dict[key] = None
+    out_cap_dict[key] = None
+
+out_cont_dict["Row to Col (# shorts)"] = 256
+#print_dict(out_cont_dict)
+
+out_cap_dict["Cap Col to PZBIAS (# pass)"] = 128
+out_cap_dict["Col to PZBIAS with TFT's ON (# shorts)"] = ""
+#print_dict(out_cap_dict)
+
+out_dict = merge_dict_b_into_a(out_cont_dict, out_cap_dict)
+print_dict(out_dict)
+
+out_dict["Timestamp"] = "Invalid"
+
+creds = get_creds()
+output_payload_gsheets = list(out_dict.values())
+write_success = write_to_spreadsheet(creds, output_payload_gsheets)
+print(write_success)

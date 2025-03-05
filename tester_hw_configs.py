@@ -96,10 +96,42 @@ PATH_BASE = "G:\\Shared drives\\Sensing\\Testing\\"
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SPREADSHEET_ID = "1EUixsb3LHau9IkTxp01H6DhMEBFxH59obI4z_YGYBko"
-ID_SHEET_NAME = "Sensor Modules"
-OUT_SHEET_NAME = "Tester Output"
 TOKEN_FILE_DEFAULT = "token.json"
 CRED_FILE_DEFAULT = "credentials.json"
+ID_SHEET_NAME = "Sensor Modules"
+OUT_SHEET_NAME = "Tester Output"
+# Below is the list of column fields in the output sheet specified by OUT_SHEET_NAME.
+# This is in the EXACT order, left to right, of the columns in the output sheet. That's the order
+# data will be appended to the sheet in each new row.
+# The tester functions (e.g. Cont 1T) use this to build their output dictionary/payload for GSheets,
+# which in turn gets appended to GSheets.
+# NOTE: The Loopback One and Loopback Two values are appended in the main routine outside of the
+# tester functions, as those tests are run in the main routine not the tester functions.
+OUT_COLUMN_FIELDS = ["Timestamp",
+                     "Tester Serial Number",
+                     "Array Serial Number",
+                     "Array Type",
+                     "Array Module Stage",
+                     "TFT Type",
+                     "Loopback One (ohm)",
+                     "Loopback Two (ohm)",
+                     "Cap Col to PZBIAS (# pass)",
+                     "Col to PZBIAS with TFT's ON (# shorts)",
+                     "Row to Col (# shorts)",
+                     "Rst to Col (# shorts)",
+                     "Row to PZBIAS (# shorts)",
+                     "Row to SHIELD (# shorts)",
+                     "Col to PZBIAS (# shorts)",
+                     "Col to SHIELD (# shorts)",
+                     "Col to Vdd (# shorts)",
+                     "Col to Vrst (# shorts)",
+                     "Rst to SHIELD (# shorts)",
+                     "Rst to PZBIAS (# shorts)",
+                     "SHIELD to PZBIAS (ohm)",
+                     "Vdd to SHIELD (ohm)",
+                     "Vdd to PZBIAS (ohm)",
+                     "Vrst to SHIELD (ohm)",
+                     "Vrst to PZBIAS (ohm)"]
 
 # ------------------------------------------
 # WAFER IMAGE PREVIEW SETTINGS
