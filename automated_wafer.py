@@ -7,7 +7,6 @@ def main():
         SET_DEBUG_MODE = True
         SET_LOOPBACK_SILENT = False
         ENABLE_TFT_TYPE_OVERRIDE = True
-        datetime_now = dt.datetime.now()
         tester_serial_number = None        
         ser = None
         inst = None
@@ -154,6 +153,7 @@ def main():
                 
                 loop_one_res = 0
                 loop_two_res = 0
+                datetime_now = dt.datetime.now()
                 out_string = (datetime_now.strftime('%Y-%m-%d %H:%M:%S') + "\n" +
                 "Array ID: " + dut_name + "\n" +
                 "Array Stage: " + wafer_assy_stage_text + "\n" +
