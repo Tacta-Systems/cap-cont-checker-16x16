@@ -1,10 +1,8 @@
-from logging import config
 from test_helper_functions import *
-import tester_hw_configs
 
 def main():
     try:
-        SET_DEBUG_MODE = True
+        SET_DEBUG_MODE = False
         SET_LOOPBACK_SILENT = False
         ENABLE_TFT_TYPE_OVERRIDE = True
         tester_serial_number = None        

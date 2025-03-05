@@ -26,7 +26,7 @@ from test_helper_functions import *
 
 def main():
     try:
-        SET_DEBUG_MODE = True
+        SET_DEBUG_MODE = False
         SET_LOOPBACK_SILENT = False
         datetime_now = dt.datetime.now()
         rm = pyvisa.ResourceManager()
