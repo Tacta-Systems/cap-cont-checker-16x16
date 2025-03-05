@@ -71,15 +71,7 @@ Dictionary used to store results from tests
 Results are uploaded to Google Sheets in this order
 Tests that were not run will be uploaded to GSheets as blank.
 '''
-output_payload_gsheets_dict = {
-    "Timestamp"            : "",
-    "Tester Serial Number" : "",
-    "Array Serial Number"  : "",
-    "Array Type"           : "",
-    "Array Module Stage"   : "",
-    "TFT Type"             : "",
-    "Loopback One (ohm)"   : "",
-    "Loopback Two (ohm)"   : "",
+output_payload_dict = {
     "Cap Col to PZBIAS (# pass)"   : "",
     "Col to PZBIAS with TFT's ON (# shorts)" : "",
     "Row to Col (# shorts)"    : "",
@@ -98,6 +90,17 @@ output_payload_gsheets_dict = {
     "Vrst to SHIELD (ohm)"     : "",
     "Vrst to PZBIAS (ohm)"     : ""
 }
+'''
+Old keys -- These are defined by the calling program (e.g. automated.py)
+"Timestamp"            : "",
+"Tester Serial Number" : "",
+"Array Serial Number"  : "",
+"Array Type"           : "",
+"Array Module Stage"   : "",
+"TFT Type"             : "",
+"Loopback One (ohm)"   : "",
+"Loopback Two (ohm)"   : "",
+'''
 
 # Helper functions for overall program
 '''
@@ -1099,7 +1102,7 @@ Parameters:
     dut_type: If the device is a backplane, sensor array, or sensor module    
     using_usb_psu_in: True if USB PSU should be set up, False if PSU shouldn't be setup
 Returns: a tuple with the following:
-    output_payload_gsheets_dict: A dictionary with key/value pairs for each test output,
+    output_payload_dict: A dictionary with key/value pairs for each test output,
                                  intended to update a database like the GSheets
     out_string: A string with each test output summary on its own line, intended for summary text file
 '''
@@ -1126,11 +1129,12 @@ def test_cap_tft_array_1t(ser, inst, psu, path, dut_name_raw, dut_stage_raw, dut
 
     out_string = test_cap_out[1]
     out_string += test_cont_col_to_pzbias_tfts_on_out[1]
-    output_payload_gsheets_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
-    output_payload_gsheets_dict["Col to PZBIAS with TFT's ON (# shorts)"] = test_cont_col_to_pzbias_tfts_on_out[0]
+    output_payload_dict["Cap Col to PZBIAS (# pass)"] = test_cap_out[0]
+    output_payload_dict["Col to PZBIAS with TFT's ON (# shorts)"] = test_cont_col_to_pzbias_tfts_on_out[0]
     if (using_usb_psu_in):
         set_psu_off(psu)
-    return (output_payload_gsheets_dict, out_string)
+    return (output_payload_dict, out_string)
+
 '''
 Run full panel of continuity tests for 1T arrays
 Will turn on the power supply if not already on, and turn it off when done.
@@ -1142,7 +1146,7 @@ Parameters:
     dut_name_full: name of the device under test
     using_usb_psu_in: True if USB PSU should be set up, False if PSU shouldn't be setup
 Returns: a tuple with the following:
-    output_payload_gsheets_dict: A dictionary with key/value pairs for each test output,
+    output_payload_dict: A dictionary with key/value pairs for each test output,
                                  intended to update a database like the GSheets
     out_string: A string with each test output summary on its own line, intended for summary text file
     has_shorts: Boolean, true if any of the tests yield shorts with resistance below threshold
@@ -1166,16 +1170,16 @@ def test_cont_array_1t(ser, inst, psu, path, dut_name_full, using_usb_psu_in=USI
     out_string += cont_col_to_shield[1] + "\n"
     out_string += cont_shield_to_pzbias[1]
 
-    output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
-    output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
-    output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
-    output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
-    output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
-    output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
+    output_payload_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
+    output_payload_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
+    output_payload_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
+    output_payload_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
+    output_payload_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
+    output_payload_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
     has_shorts = cont_row_to_column[0]>0 or cont_row_to_pzbias[0]>0 or cont_col_to_pzbias[0]>0 or cont_row_to_shield[0]>0 or cont_col_to_shield[0]>0 or cont_shield_to_pzbias[0]=="FAIL"
     if (using_usb_psu_in):
         set_psu_off(psu)
-    return (output_payload_gsheets_dict, out_string, has_shorts)
+    return (output_payload_dict, out_string, has_shorts)
 
 '''
 Run full panel of continuity tests for 3T arrays
@@ -1188,7 +1192,7 @@ Parameters:
     dut_name_full: name of the device under test
     using_usb_psu_in: True if USB PSU should be set up, False if PSU shouldn't be setup
 Returns: a tuple with the following:
-    output_payload_gsheets_dict: A dictionary with key/value pairs for each test output,
+    output_payload_dict: A dictionary with key/value pairs for each test output,
                                  intended to update a database like the GSheets
     out_string: A string with each test output summary on its own line, intended for summary text file
 '''
@@ -1229,24 +1233,24 @@ def test_cont_array_3t(ser, inst, psu, path, dut_name_full, using_usb_psu_in=USI
     out_string += cont_vrst_to_pzbias[1] + "\n"
     out_string += cont_shield_to_pzbias[1]
 
-    output_payload_gsheets_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
-    output_payload_gsheets_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
-    output_payload_gsheets_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
-    output_payload_gsheets_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
-    output_payload_gsheets_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
-    output_payload_gsheets_dict["Col to Vdd (# shorts)"]    = cont_col_to_vdd[0]
-    output_payload_gsheets_dict["Col to Vrst (# shorts)"]   = cont_col_to_vrst[0]
-    output_payload_gsheets_dict["Rst to Col (# shorts)"]    = cont_rst_to_column[0]
-    output_payload_gsheets_dict["Rst to SHIELD (# shorts)"] = cont_rst_to_shield[0]
-    output_payload_gsheets_dict["Rst to PZBIAS (# shorts)"] = cont_rst_to_pzbias[0]
-    output_payload_gsheets_dict["Vdd to SHIELD (ohm)"]      = cont_vdd_to_shield[0]
-    output_payload_gsheets_dict["Vdd to PZBIAS (ohm)"]      = cont_vdd_to_pzbias[0]
-    output_payload_gsheets_dict["Vrst to SHIELD (ohm)"]     = cont_vrst_to_shield[0]
-    output_payload_gsheets_dict["Vrst to PZBIAS (ohm)"]     = cont_vrst_to_pzbias[0]
-    output_payload_gsheets_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
+    output_payload_dict["Row to Col (# shorts)"]    = cont_row_to_column[0]
+    output_payload_dict["Row to PZBIAS (# shorts)"] = cont_row_to_pzbias[0]
+    output_payload_dict["Row to SHIELD (# shorts)"] = cont_row_to_shield[0]
+    output_payload_dict["Col to PZBIAS (# shorts)"] = cont_col_to_pzbias[0]
+    output_payload_dict["Col to SHIELD (# shorts)"] = cont_col_to_shield[0]
+    output_payload_dict["Col to Vdd (# shorts)"]    = cont_col_to_vdd[0]
+    output_payload_dict["Col to Vrst (# shorts)"]   = cont_col_to_vrst[0]
+    output_payload_dict["Rst to Col (# shorts)"]    = cont_rst_to_column[0]
+    output_payload_dict["Rst to SHIELD (# shorts)"] = cont_rst_to_shield[0]
+    output_payload_dict["Rst to PZBIAS (# shorts)"] = cont_rst_to_pzbias[0]
+    output_payload_dict["Vdd to SHIELD (ohm)"]      = cont_vdd_to_shield[0]
+    output_payload_dict["Vdd to PZBIAS (ohm)"]      = cont_vdd_to_pzbias[0]
+    output_payload_dict["Vrst to SHIELD (ohm)"]     = cont_vrst_to_shield[0]
+    output_payload_dict["Vrst to PZBIAS (ohm)"]     = cont_vrst_to_pzbias[0]
+    output_payload_dict["SHIELD to PZBIAS (ohm)"]   = cont_shield_to_pzbias[0]
     if (using_usb_psu_in):
         set_psu_off(psu)
-    return (output_payload_gsheets_dict, out_string)
+    return (output_payload_dict, out_string)
 
 # helper functions for file compare/diff
 '''

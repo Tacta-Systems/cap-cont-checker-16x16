@@ -5,12 +5,7 @@ import tester_hw_configs
 def main():
     try:
         DEBUG_MODE = True
-        if DEBUG_MODE: #let's speed things up a bit
-            tester_hw_configs.SERIAL_DELAY_TIME = 0
-            tester_hw_configs.SERIAL_DELAY_TIME_CAP = 0
-            tester_hw_configs.PSU_DELAY_TIME = 0
-
-        ENABLE_TFT_TYPE_OVERRIDE = False
+        ENABLE_TFT_TYPE_OVERRIDE = True
         datetime_now = dt.datetime.now()
         tester_serial_number = None        
         ser = None
@@ -111,7 +106,6 @@ def main():
         path_base = PATH_BASE + wafer_stage_text.title() + "\\"
         '''
 
-        print(wafer_name_input)
         list_of_test_coords = []
         with open(WAFER_TEST_CONFIG_PATH + "\\" + config_file_selected) as file:
             for line in file:
@@ -176,6 +170,15 @@ def main():
                     file.write("Loopback 1 res. (ohm),Loopback 2 res. (ohm)\n")
                     file.write(str(loop_one_res) + "," + str(loop_two_res))
 
+                output_payload_gsheets_dict = dict()
+                output_payload_gsheets_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d %H:%M:%S')
+                output_payload_gsheets_dict["Tester Serial Number"] = tester_serial_number
+                output_payload_gsheets_dict["Array Serial Number"]  = dut_name
+                output_payload_gsheets_dict["Array Type"]           = wafer_stage_text
+                output_payload_gsheets_dict["Array Module Stage"]   = wafer_assy_stage_text
+                output_payload_gsheets_dict["TFT Type"]             = str(tft_type) + "T"
+                output_payload_gsheets_dict["Loopback One (ohm)"] = loop_one_res
+                output_payload_gsheets_dict["Loopback Two (ohm)"] = loop_two_res
                 if (tft_type == 1):
                     special_test_state = 0
                     valid_responses = {'': "run full 1T test", 1: "only run cap + TFT cont. tests and skip continuity checks",
@@ -189,16 +192,15 @@ def main():
                         print("Running only continuity tests...")
                     else:
                         print("Running all tests...")
-                    output_payload_tester_dict = dict()
                     if (special_test_state == 1): # only run capacitance and TFT ON tests
                         output_payload_tester_dict, out_string_test = test_cap_tft_array_1t(ser, inst, psu, path_base, dut_name_full,
                                                                                              wafer_assy_stage_text, wafer_stage_text)
                         out_string += out_string_test
-                    elif (special_test_state == 2):
+                    elif (special_test_state == 2): # only run 1T continuity tests
                         output_payload_tester_dict, out_string_test, has_shorts = test_cont_array_1t(ser, inst, psu, path_base, dut_name_full)
                         out_string += out_string_test
                     else:
-                        output_payload_tester_cont_dict, out_string_cont_test, has_shorts = test_cont_array_1t(ser, inst, psu, path_base, 
+                        output_payload_tester_dict, out_string_cont_test, has_shorts = test_cont_array_1t(ser, inst, psu, path_base,
                                                                                                                dut_name_full)
                         out_string += out_string_cont_test
 
@@ -217,27 +219,21 @@ def main():
                         if (response.lower() == "test"):
                             output_payload_tester_captft_dict, out_string_test = test_cap_tft_array_1t(ser, inst, psu, path_base, dut_name_full,
                                                                                                         wafer_assy_stage_text, wafer_stage_text)
-                            output_payload_tester_dict = output_payload_tester_cont_dict | output_payload_tester_captft_dict
+                            output_payload_tester_dict = output_payload_tester_dict | output_payload_tester_captft_dict
                             out_string += "\n" + out_string_test
                         else:
-                            output_payload_tester_dict = output_payload_tester_cont_dict
+                            pass
 
                     out_string += out_string_test
                     output_filename = datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_full + "_summary.txt"
-                    output_filename_full = path_base + output_filename                    
+                    output_filename_full = path_base + output_filename
+
                     with open(output_filename_full, 'w', newline='') as file:
                         file.write(out_string)
                     print("Tests concluded at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
 
-                    output_payload_tester_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d %H:%M:%S')
-                    output_payload_tester_dict["Tester Serial Number"] = tester_serial_number
-                    output_payload_tester_dict["Array Serial Number"]  = dut_name
-                    output_payload_tester_dict["Array Type"]           = wafer_stage_text
-                    output_payload_tester_dict["Array Module Stage"]   = wafer_assy_stage_text
-                    output_payload_tester_dict["TFT Type"]             = str(tft_type) + "T"
-                    output_payload_tester_dict["Loopback One (ohm)"] = loop_one_res
-                    output_payload_tester_dict["Loopback Two (ohm)"] = loop_two_res
-                    output_payload_gsheets = list(output_payload_tester_dict.values())
+                    output_payload_gsheets_dict = output_payload_gsheets_dict | output_payload_tester_dict
+                    output_payload_gsheets = list(output_payload_gsheets_dict.values())
                     write_success = write_to_spreadsheet(creds, output_payload_gsheets)
                     if (write_success):
                         print("Successfully wrote data from " + str(coord) + " to Google Sheets!")
@@ -246,23 +242,16 @@ def main():
                 elif (tft_type == 3):
                     output_payload_tester_dict, out_string_test = test_cont_array_3t(ser, inst, psu, path_base, dut_name_full)
                     out_string += out_string_test
-
                     output_filename = datetime_now.strftime('%Y-%m-%d_%H-%M-%S') + "_" + dut_name_full + "_summary.txt"
-                    output_filename_full = path_base + output_filename                    
+                    output_filename_full = path_base + output_filename
+
                     with open(output_filename_full, 'w', newline='') as file:
                         file.write(out_string)
-                    print("Tests concluded at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")  
-                  
-                    output_payload_tester_dict["Timestamp"]            = datetime_now.strftime('%Y-%m-%d %H:%M:%S')
-                    output_payload_tester_dict["Tester Serial Number"] = tester_serial_number
-                    output_payload_tester_dict["Array Serial Number"]  = dut_name
-                    output_payload_tester_dict["Array Type"]           = wafer_stage_text
-                    output_payload_tester_dict["Array Module Stage"]   = wafer_assy_stage_text
-                    output_payload_tester_dict["TFT Type"]             = str(tft_type) + "T"
-                    output_payload_tester_dict["Loopback One (ohm)"] = loop_one_res
-                    output_payload_tester_dict["Loopback Two (ohm)"] = loop_two_res
+                    print("Tests concluded at " + dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + "\n")
+
+                    output_payload_gsheets_dict = output_payload_gsheets_dict | output_payload_tester_dict
                     out_string += out_string_test
-                    output_payload_gsheets = list(output_payload_tester_dict.values())
+                    output_payload_gsheets = list(output_payload_gsheets_dict.values())
                     write_success = write_to_spreadsheet(creds, output_payload_gsheets)
                     if (write_success):
                         print("Successfully wrote data from " + str(coord) + " to Google Sheets!")
